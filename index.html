@@ -1,0 +1,2229 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#111827">
+<title>Çınar Cafe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════ */
+:root{
+  --bg:      #F4F5F7;
+  --surface: #FFFFFF;
+  --border:  #E4E6EA;
+  --ink:     #111827;
+  --ink2:    #6B7280;
+  --ink3:    #9CA3AF;
+  --gold:    #B45309;
+  --gold-bg: rgba(180,83,9,0.08);
+  --gold-lt: #FEF3C7;
+  --red:     #DC2626;
+  --red-bg:  rgba(220,38,38,0.08);
+  --green:   #059669;
+  --grn-bg:  rgba(5,150,105,0.08);
+  --amber:   #D97706;
+  --amb-bg:  rgba(217,119,6,0.08);
+  --nav-w:   180px;
+  --nav-bg:  #111827;
+  --nav-txt: rgba(255,255,255,0.5);
+  --nav-act: #FFFFFF;
+  --radius:  10px;
+  --shadow:  0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
+button{font-family:'Inter',sans-serif;cursor:pointer;border:none;background:none;}
+input,select,textarea{font-family:'Inter',sans-serif;font-size:14px;outline:none;}
+img{display:block;}
+
+/* ═══════════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════════ */
+.screen{display:none;position:fixed;inset:0;z-index:10;overflow:hidden;}
+.screen.open{display:flex;flex-direction:column;}
+
+/* ═══════════════════════════════════════════
+   COMPONENTS
+═══════════════════════════════════════════ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap;}
+.btn-primary{background:var(--ink);color:#fff;}
+.btn-primary:hover{background:#1F2937;}
+.btn-gold{background:var(--gold);color:#fff;box-shadow:0 2px 8px rgba(180,83,9,0.25);}
+.btn-gold:hover{background:#92400E;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--ink2);}
+.btn-outline:hover{border-color:var(--ink2);color:var(--ink);}
+.btn-red{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:700;}
+.badge-red{background:var(--red-bg);color:var(--red);}
+.badge-amber{background:var(--amb-bg);color:var(--amber);}
+.badge-green{background:var(--grn-bg);color:var(--green);}
+.badge-gold{background:var(--gold-bg);color:var(--gold);}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:12px;font-weight:600;color:var(--ink2);}
+.field input,.field select{padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--surface);color:var(--ink);transition:border .15s;}
+.field input:focus,.field select:focus{border-color:var(--gold);}
+.toast-area{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{padding:10px 16px;background:var(--ink);color:#fff;border-radius:8px;font-size:13px;font-weight:500;box-shadow:var(--shadow-md);animation:toastIn .2s ease;pointer-events:none;}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal{background:var(--surface);border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.2);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
+.modal-head{padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center;}
+.modal-head h3{font-size:18px;font-weight:700;}
+.modal-body{padding:20px 24px;}
+.modal-foot{padding:12px 24px 20px;display:flex;gap:8px;justify-content:flex-end;}
+.divider{height:1px;background:var(--border);margin:12px 0;}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--ink3);font-size:13px;}
+
+/* ═══════════════════════════════════════════
+   KASA LAYOUT
+═══════════════════════════════════════════ */
+#kasa-nav{
+  width:var(--nav-w);flex:none;
+  background:var(--nav-bg);
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+}
+#kasa-content{flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;}
+.kasa-tab{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column;}
+.kasa-tab.active{display:flex;}
+.kasa-nav-logo{padding:20px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.kasa-nav-logo span{font-family:'Fraunces',serif;font-size:18px;color:#fff;font-weight:700;}
+.kasa-nav-logo small{display:block;font-size:10px;color:var(--nav-txt);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px;}
+.kasa-nav-ciro{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.kasa-nav-ciro-val{font-family:'Fraunces',serif;font-size:22px;font-weight:800;color:#F59E0B;}
+.kasa-nav-ciro-lab{font-size:10px;color:var(--nav-txt);margin-top:1px;}
+.kasa-nav-group{padding:8px 8px;}
+.kasa-nav-group-label{font-size:10px;color:var(--nav-txt);letter-spacing:0.1em;text-transform:uppercase;padding:8px 8px 4px;}
+.kasa-nav-btn{width:100%;display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:8px;color:var(--nav-txt);font-size:13px;font-weight:500;transition:all .15s;text-align:left;position:relative;}
+.kasa-nav-btn:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.kasa-nav-btn.active{background:rgba(255,255,255,0.12);color:#fff;font-weight:600;}
+.kasa-nav-btn .icon{font-size:16px;width:20px;text-align:center;flex:none;}
+.kasa-nav-btn .badge-count{margin-left:auto;background:#DC2626;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;}
+.kasa-topbar{flex:none;height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;}
+.kasa-topbar-title{font-size:15px;font-weight:700;}
+.kasa-topbar-sub{font-size:12px;color:var(--ink2);}
+.kasa-topbar-actions{margin-left:auto;display:flex;gap:8px;align-items:center;}
+
+/* ═══════════════════════════════════════════
+   MASALAR TAB
+═══════════════════════════════════════════ */
+.masalar-layout{display:flex;flex:1;min-height:0;overflow:hidden;}
+.masalar-left{width:300px;flex:none;display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--bg);}
+.masalar-right{flex:1;min-width:0;overflow-y:auto;background:var(--surface);}
+.bolum-tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);}
+.bolum-tab{flex:1;padding:11px 8px;font-size:12px;font-weight:700;color:var(--ink2);border-bottom:2px solid transparent;transition:all .15s;letter-spacing:0.04em;}
+.bolum-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.masa-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;align-content:start;overflow-y:auto;flex:1;}
+.masa-card{aspect-ratio:1;border-radius:8px;border:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;position:relative;}
+.masa-card:hover{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-bg);}
+.masa-card.occupied{background:#FFFBEB;border-color:#FCD34D;}
+.masa-card.selected{border-color:var(--gold);box-shadow:0 0 0 2px rgba(180,83,9,0.25);background:var(--gold-lt);}
+.masa-card.reserved{background:#EFF6FF;border-color:#93C5FD;}
+.masa-card-no{font-family:'Fraunces',serif;font-size:16px;font-weight:700;color:var(--ink2);}
+.masa-card.occupied .masa-card-no{color:var(--amber);}
+.masa-card.selected .masa-card-no{color:var(--gold);}
+.masa-card-tutar{font-size:9px;color:var(--ink3);margin-top:2px;font-weight:600;}
+.masa-card.occupied .masa-card-tutar{color:var(--amber);}
+.masa-dot{width:6px;height:6px;border-radius:50%;position:absolute;top:5px;right:5px;}
+.masa-dot.red{background:var(--red);}
+.masa-dot.amber{background:var(--amber);}
+.masa-dot.green{background:var(--green);}
+
+/* Detay panel */
+.detay-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--ink3);}
+.detay-empty svg{opacity:0.2;}
+.detay-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.detay-masa-no{font-family:'Fraunces',serif;font-size:22px;font-weight:800;color:var(--ink);}
+.detay-status{font-size:12px;color:var(--ink2);}
+.detay-orders{padding:0;}
+.order-group{border-bottom:1px solid var(--border);}
+.order-group-head{padding:10px 20px;background:var(--bg);display:flex;align-items:center;gap:8px;}
+.order-group-head span{font-size:12px;font-weight:600;color:var(--ink2);}
+.order-item-row{display:flex;align-items:center;padding:9px 20px;gap:10px;border-bottom:1px solid var(--border);}
+.order-item-row:last-child{border-bottom:none;}
+.order-item-name{flex:1;font-size:13px;color:var(--ink);}
+.order-item-qty{font-size:12px;font-weight:700;color:var(--ink2);min-width:24px;}
+.order-item-price{font-size:13px;font-weight:600;color:var(--ink);min-width:60px;text-align:right;}
+.order-item-check input[type=checkbox]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;}
+.detay-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px;background:var(--surface);}
+.total-row{display:flex;justify-content:space-between;align-items:center;}
+.total-label{font-size:13px;color:var(--ink2);}
+.total-val{font-family:'Fraunces',serif;font-size:18px;font-weight:800;color:var(--ink);}
+.total-net{color:var(--green);}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;}
+.indirim-row{display:flex;gap:8px;align-items:center;}
+.indirim-row input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:14px;}
+.tip-group{display:flex;gap:4px;}
+.tip-btn{padding:7px 12px;border-radius:7px;border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--ink2);transition:all .15s;}
+.tip-btn.active{background:var(--gold);color:#fff;border-color:var(--gold);}
+.odeme-group{display:flex;gap:6px;flex-wrap:wrap;}
+.odeme-btn{padding:7px 12px;border-radius:7px;border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--ink2);transition:all .15s;}
+.odeme-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+/* Aksiyon bar (sol alt) */
+.aksiyon-bar{flex:none;border-top:1px solid var(--border);background:var(--surface);padding:8px;}
+.aksiyon-bar-title{font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;padding:0 2px;}
+.aksiyon-btns{display:flex;flex-direction:column;gap:4px;}
+.aksiyon-btn{width:100%;padding:9px 12px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:12px;font-weight:600;text-align:left;display:flex;align-items:center;gap:8px;transition:all .15s;}
+.aksiyon-btn:hover{background:var(--gold-bg);border-color:var(--gold);color:var(--gold);}
+.aksiyon-btn .icon{font-size:14px;width:18px;text-align:center;}
+.merge-link-bar{text-align:center;padding:6px;border-top:1px solid var(--border);}
+.merge-link-bar button{font-size:10px;color:var(--ink3);letter-spacing:0.06em;}
+.merge-link-bar button:hover{color:var(--gold);}
+
+/* Taşıma seçimi barı */
+.tasi-bar{position:sticky;bottom:0;background:var(--ink);color:#fff;padding:10px 16px;display:none;align-items:center;gap:10px;}
+.tasi-bar.show{display:flex;}
+.tasi-bar-txt{flex:1;font-size:13px;}
+
+/* ═══════════════════════════════════════════
+   RAPOR TAB
+═══════════════════════════════════════════ */
+.rapor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.rapor-card{padding:16px;}
+.rapor-card-title{font-size:11px;font-weight:700;color:var(--ink2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;}
+.rapor-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.rapor-stat{background:var(--bg);border-radius:8px;padding:12px;text-align:center;}
+.rapor-stat-val{font-family:'Fraunces',serif;font-size:22px;font-weight:800;color:var(--ink);}
+.rapor-stat-lab{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.08em;margin-top:3px;}
+.bar-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);}
+.bar-row:last-child{border:none;}
+.bar-label{flex:1;font-size:12px;color:var(--ink2);}
+.bar-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden;flex:2;}
+.bar-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .3s;}
+.bar-val{width:60px;text-align:right;font-size:12px;font-weight:600;color:var(--ink);}
+.urun-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);}
+.urun-row:last-child{border:none;}
+.urun-name{flex:1;font-size:12px;color:var(--ink);}
+.urun-count{font-size:12px;font-weight:700;color:var(--gold);min-width:30px;text-align:right;}
+
+/* ═══════════════════════════════════════════
+   İŞLEMLER TAB
+═══════════════════════════════════════════ */
+.islem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.islem-card{padding:16px;display:flex;flex-direction:column;gap:10px;}
+.islem-card h4{font-size:13px;font-weight:700;color:var(--gold);}
+.islem-card p{font-size:11px;color:var(--ink2);line-height:1.5;}
+.islem-card .fields{display:flex;flex-direction:column;gap:8px;}
+.rez-list{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
+.rez-item{display:flex;align-items:center;padding:7px 10px;background:var(--bg);border-radius:7px;gap:8px;font-size:12px;}
+.rez-item .rez-time{font-weight:700;color:var(--ink);min-width:40px;}
+.rez-item .rez-table{color:var(--gold);font-weight:600;min-width:60px;}
+.rez-item .rez-name{flex:1;color:var(--ink2);}
+.rez-item .rez-del{color:var(--red);font-size:16px;padding:0 4px;}
+
+/* ═══════════════════════════════════════════
+   GEÇMİŞ TAB
+═══════════════════════════════════════════ */
+.gecmis-header{padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;}
+.gecmis-subtab{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:600;color:var(--ink2);border:1px solid transparent;transition:all .15s;}
+.gecmis-subtab.active{background:var(--gold-bg);color:var(--gold);border-color:rgba(180,83,9,0.2);}
+.gecmis-list{display:flex;flex-direction:column;padding:12px;gap:8px;}
+.gecmis-card{padding:14px 16px;}
+.gecmis-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.gecmis-masa{font-family:'Fraunces',serif;font-size:16px;font-weight:800;color:var(--gold);}
+.gecmis-time{font-size:11px;color:var(--ink3);}
+.gecmis-items{font-size:12px;color:var(--ink2);margin-bottom:8px;line-height:1.6;}
+.gecmis-prices{display:flex;gap:12px;align-items:center;}
+.gecmis-net{font-family:'Fraunces',serif;font-size:18px;font-weight:800;color:var(--ink);}
+.gecmis-indirim{font-size:12px;color:var(--green);font-weight:700;}
+.gecmis-odeme{font-size:11px;color:var(--ink3);}
+
+/* ═══════════════════════════════════════════
+   KAPANIŞ TAB
+═══════════════════════════════════════════ */
+.kapanis-content{max-width:540px;margin:0 auto;}
+
+/* ═══════════════════════════════════════════
+   GARSON EKRANI
+═══════════════════════════════════════════ */
+#garson-topbar{flex:none;height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;}
+.garson-body{flex:1;min-height:0;display:flex;overflow:hidden;}
+.garson-sidebar{width:190px;flex:none;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:10px 8px;gap:4px;}
+.garson-filter-btn{width:100%;padding:9px 12px;border-radius:8px;border:1px solid transparent;font-size:12px;font-weight:600;color:var(--ink2);text-align:left;transition:all .15s;}
+.garson-filter-btn.active{background:var(--gold-bg);color:var(--gold);border-color:rgba(180,83,9,0.15);}
+.garson-filter-btn:hover:not(.active){background:var(--bg);}
+.garson-sidebar-label{font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:0.1em;text-transform:uppercase;padding:10px 4px 4px;}
+.garson-main{flex:1;min-width:0;overflow-y:auto;padding:12px;}
+.orders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;align-content:start;}
+.order-card{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);background:var(--surface);}
+.order-card.yeni{border-color:#FBBF24;background:#FFFBEB;}
+.order-card.hazirlaniyor{border-color:#93C5FD;background:#EFF6FF;}
+.order-card.hazir{border-color:#6EE7B7;background:#ECFDF5;}
+.order-card-head{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
+.order-card-masa{font-family:'Fraunces',serif;font-size:16px;font-weight:700;color:var(--ink);}
+.order-card-time{font-size:11px;color:var(--ink3);}
+.order-card-items{padding:0 14px 6px;}
+.order-card-item{display:flex;gap:6px;padding:3px 0;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--border);}
+.order-card-item:last-child{border:none;}
+.order-card-item-qty{font-weight:700;color:var(--ink);min-width:20px;}
+.order-card-foot{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);}
+.order-card-total{font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--ink);}
+.order-card-actions{display:flex;gap:6px;}
+.order-action-btn{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid var(--border);color:var(--ink2);transition:all .15s;}
+.order-action-btn:hover{background:var(--bg);}
+.order-action-btn.next{background:var(--ink);color:#fff;border-color:var(--ink);}
+.fis-btn{padding:6px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;color:var(--ink2);}
+
+/* Garson: masa takibi */
+.masa-grid-garson{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;padding:12px;}
+.masa-card-g{border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:10px 6px;text-align:center;cursor:pointer;transition:all .15s;}
+.masa-card-g:hover{border-color:var(--gold);}
+.masa-card-g.occupied{background:#FFFBEB;border-color:#FCD34D;}
+.masa-card-g.selected-g{border-color:var(--gold);background:var(--gold-lt);box-shadow:0 0 0 2px rgba(180,83,9,0.2);}
+.masa-card-g.reserved{background:#EFF6FF;border-color:#93C5FD;}
+.masa-card-g-no{font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--ink2);}
+.masa-card-g.occupied .masa-card-g-no{color:var(--amber);}
+.masa-card-g.selected-g .masa-card-g-no{color:var(--gold);}
+.masa-card-g-status{font-size:9px;margin-top:2px;color:var(--ink3);}
+.bolum-header{padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--ink2);letter-spacing:0.06em;text-transform:uppercase;}
+.garson-sidebar-panel{background:var(--bg);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:12px;}
+.garson-sidebar-panel h4{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+.siparis-satir{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);color:var(--ink2);}
+.siparis-satir:last-child{border:none;}
+.siparis-qty{color:var(--gold);font-weight:700;}
+
+/* ═══════════════════════════════════════════
+   QR MENU
+═══════════════════════════════════════════ */
+#menu-screen{background:#fff;}
+.menu-top{flex:none;background:#111827;padding:14px 16px;display:flex;align-items:center;gap:10px;}
+.menu-top-brand{font-family:'Fraunces',serif;font-size:20px;color:#fff;font-weight:700;}
+.menu-top-masa{font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;}
+.menu-layout{flex:1;display:flex;min-height:0;overflow:hidden;}
+.menu-cats{width:120px;flex:none;background:var(--bg);border-right:1px solid var(--border);overflow-y:auto;padding:8px 6px;}
+.menu-cat-btn{width:100%;padding:8px 6px;border-radius:7px;text-align:center;font-size:11px;font-weight:600;color:var(--ink2);transition:all .15s;margin-bottom:2px;}
+.menu-cat-btn.active{background:var(--gold);color:#fff;}
+.menu-cat-btn:hover:not(.active){background:var(--surface);}
+.menu-cat-img{width:36px;height:36px;border-radius:50%;background:var(--border);margin:0 auto 4px;overflow:hidden;object-fit:cover;}
+.menu-products{flex:1;overflow-y:auto;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-content:start;}
+.menu-product{border-radius:10px;border:1px solid var(--border);background:var(--surface);overflow:hidden;cursor:pointer;transition:all .15s;}
+.menu-product:hover{box-shadow:var(--shadow-md);}
+.menu-product-img{width:100%;height:100px;object-fit:cover;background:var(--bg);}
+.menu-product-body{padding:8px 10px;}
+.menu-product-name{font-size:12px;font-weight:600;color:var(--ink);line-height:1.3;}
+.menu-product-price{font-size:12px;font-weight:700;color:var(--gold);margin-top:4px;}
+.menu-cart-btn{position:fixed;bottom:0;left:0;right:0;padding:14px 16px;background:var(--ink);color:#fff;font-size:14px;font-weight:700;display:none;align-items:center;justify-content:space-between;}
+.menu-cart-btn.show{display:flex;}
+.menu-cart-count{background:var(--gold);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
+
+/* ═══════════════════════════════════════════
+   KASA ŞİFRE EKRANI
+═══════════════════════════════════════════ */
+#kasa-login{position:fixed;inset:0;background:#111827;z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px;}
+.kasa-login-card{background:#1F2937;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;width:min(340px,90vw);}
+.kasa-login-title{font-family:'Fraunces',serif;font-size:24px;color:#fff;text-align:center;margin-bottom:4px;}
+.kasa-login-sub{font-size:12px;color:rgba(255,255,255,0.4);text-align:center;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:24px;}
+.kasa-login-input{width:100%;padding:14px 16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:16px;text-align:center;letter-spacing:0.2em;margin-bottom:12px;}
+.kasa-login-input:focus{border-color:#F59E0B;}
+.kasa-login-btn{width:100%;padding:13px;background:#F59E0B;color:#000;border-radius:10px;font-size:14px;font-weight:700;}
+.kasa-login-err{color:#F87171;font-size:12px;text-align:center;margin-top:6px;}
+
+/* ═══════════════════════════════════════════
+   ADMIN
+═══════════════════════════════════════════ */
+#admin-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;}
+#admin-overlay.open{display:flex;}
+#admin-panel{width:100%;max-height:95vh;background:var(--surface);border-radius:16px 16px 0 0;overflow:hidden;display:flex;flex-direction:column;}
+.admin-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;}
+.admin-head h3{font-size:16px;font-weight:700;flex:1;}
+.admin-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);}
+.admin-tab-btn{flex:1;padding:11px 8px;font-size:12px;font-weight:600;color:var(--ink2);border-bottom:2px solid transparent;transition:all .15s;}
+.admin-tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+.admin-content{flex:1;overflow-y:auto;padding:16px;}
+.admin-tab-panel{display:none;flex-direction:column;gap:12px;}
+.admin-tab-panel.active{display:flex;}
+.admin-product-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg);border-radius:8px;}
+.admin-product-img{width:44px;height:44px;border-radius:6px;object-fit:cover;background:var(--border);}
+.admin-product-info{flex:1;}
+.admin-product-name{font-size:13px;font-weight:600;color:var(--ink);}
+.admin-product-price{font-size:12px;color:var(--gold);font-weight:700;margin-top:2px;}
+.admin-product-actions{display:flex;gap:6px;}
+
+/* ═══════════════════════════════════════════
+   GEÇİŞ ANIMASYONLARI + UTILITY
+═══════════════════════════════════════════ */
+.hidden{display:none!important;}
+.text-xs{font-size:11px;}
+.text-sm{font-size:12px;}
+.text-ink2{color:var(--ink2);}
+.fw7{font-weight:700;}
+.flex{display:flex;}
+.gap8{gap:8px;}
+.mt8{margin-top:8px;}
+.w100{width:100%;}
+
+/* Live dot */
+.live-dot{width:7px;height:7px;border-radius:50%;background:#6EE7B7;display:inline-block;}
+.live-dot.off{background:#F87171;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.live-dot.active{animation:pulse 1.5s infinite;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="toast-area" id="toast-area"></div>
+
+<!-- ═══════════════════════════════════════════
+     KASA GİRİŞ EKRANI
+═══════════════════════════════════════════ -->
+<div id="kasa-login" style="display:none;">
+  <div class="kasa-login-card">
+    <div class="kasa-login-title">🌿 Çınar Kasa</div>
+    <div class="kasa-login-sub">Kasa Girişi</div>
+    <input type="password" id="kasa-pin" class="kasa-login-input" placeholder="• • • • • •" maxlength="20"
+           onkeydown="if(event.key==='Enter')kasaGiris()">
+    <button class="kasa-login-btn" onclick="kasaGiris()">Giriş</button>
+    <div id="kasa-login-err" class="kasa-login-err"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     KASA EKRANI
+═══════════════════════════════════════════ -->
+<div id="kasa-screen" class="screen">
+  <!-- Sol Nav -->
+  <div id="kasa-nav">
+    <div class="kasa-nav-logo">
+      <span>🌿 Çınar</span>
+      <small>Kasa Yönetimi</small>
+    </div>
+    <div class="kasa-nav-ciro">
+      <div class="kasa-nav-ciro-val" id="nav-ciro">— ₺</div>
+      <div class="kasa-nav-ciro-lab">Bugün Ciro</div>
+    </div>
+    <div class="kasa-nav-group">
+      <div class="kasa-nav-group-label">Masalar</div>
+      <button class="kasa-nav-btn active" onclick="kasaTabAc('masalar',this)">
+        <span class="icon">🪑</span>Masalar
+        <span class="badge-count" id="nav-badge-acik" style="display:none"></span>
+      </button>
+    </div>
+    <div class="kasa-nav-group">
+      <div class="kasa-nav-group-label">Raporlar</div>
+      <button class="kasa-nav-btn" onclick="kasaTabAc('rapor',this)">
+        <span class="icon">📊</span>Rapor
+      </button>
+      <button class="kasa-nav-btn" onclick="kasaTabAc('gecmis',this)">
+        <span class="icon">📋</span>Geçmiş
+      </button>
+    </div>
+    <div class="kasa-nav-group">
+      <div class="kasa-nav-group-label">Araçlar</div>
+      <button class="kasa-nav-btn" onclick="kasaTabAc('islemler',this)">
+        <span class="icon">🔀</span>İşlemler
+      </button>
+      <button class="kasa-nav-btn" onclick="adminAc()">
+        <span class="icon">⚙️</span>Yönetim
+      </button>
+      <button class="kasa-nav-btn" onclick="kasaTabAc('kapanis',this)" style="color:rgba(239,68,68,0.7);">
+        <span class="icon">🔒</span>Kapanış
+      </button>
+    </div>
+    <div style="flex:1"></div>
+    <div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px;">
+      <span class="live-dot active" id="kasa-dot"></span>
+      <span style="font-size:11px;color:rgba(255,255,255,0.3);" id="kasa-saat">00:00</span>
+      <button onclick="kasaCikis()" style="margin-left:auto;font-size:11px;color:rgba(255,255,255,0.3);">Çıkış</button>
+    </div>
+  </div>
+
+  <!-- İçerik -->
+  <div id="kasa-content">
+
+    <!-- MASALAR TAB -->
+    <div class="kasa-tab active" id="tab-masalar">
+      <div class="masalar-layout">
+        <!-- Sol: Grid -->
+        <div class="masalar-left">
+          <!-- Bahçe / Salon -->
+          <div class="bolum-tabs">
+            <button class="bolum-tab active" id="btn-bahce" onclick="bolumSec('bahce',this)">🌿 Bahçe</button>
+            <button class="bolum-tab" id="btn-salon" onclick="bolumSec('salon',this)">🏠 Salon</button>
+          </div>
+          <!-- Grid -->
+          <div class="masa-grid" id="masa-grid"></div>
+          <!-- Aksiyon Bar -->
+          <div class="aksiyon-bar hidden" id="aksiyon-bar">
+            <div class="aksiyon-bar-title" id="aksiyon-bar-title">Masa</div>
+            <div class="aksiyon-btns" id="aksiyon-btns"></div>
+          </div>
+          <!-- Birleştir -->
+          <div class="merge-link-bar">
+            <button onclick="birlestirMod()" id="birlestir-btn">⊕ Masa Birleştir</button>
+          </div>
+        </div>
+        <!-- Sağ: Detay -->
+        <div class="masalar-right" id="masalar-right">
+          <div class="detay-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>
+            </svg>
+            <span>Bir masaya tıklayın</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RAPOR TAB -->
+    <div class="kasa-tab" id="tab-rapor">
+      <div class="kasa-topbar">
+        <div>
+          <div class="kasa-topbar-title">Günlük Rapor</div>
+          <div class="kasa-topbar-sub" id="rapor-tarih"></div>
+        </div>
+        <div class="kasa-topbar-actions">
+          <button class="btn btn-outline btn-sm" onclick="raporYukle()">↺ Yenile</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px;" id="rapor-content">
+        <div class="loading"><div class="spinner"></div>Yükleniyor…</div>
+      </div>
+    </div>
+
+    <!-- GEÇMİŞ TAB -->
+    <div class="kasa-tab" id="tab-gecmis">
+      <div class="gecmis-header">
+        <button class="gecmis-subtab active" onclick="gecmisAlt('tum',this)">📋 Tümü</button>
+        <button class="gecmis-subtab" onclick="gecmisAlt('indirim',this)">🏷 İndirimli</button>
+        <div style="margin-left:auto;">
+          <select id="gecmis-gun" onchange="gecmisYukle()" style="font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
+            <option value="0">Bugün</option>
+            <option value="1">Dün</option>
+            <option value="7">Son 7 Gün</option>
+            <option value="30">Son 30 Gün</option>
+          </select>
+        </div>
+      </div>
+      <div id="gecmis-content" style="flex:1;overflow-y:auto;">
+        <div class="loading"><div class="spinner"></div>Yükleniyor…</div>
+      </div>
+    </div>
+
+    <!-- İŞLEMLER TAB -->
+    <div class="kasa-tab" id="tab-islemler">
+      <div class="kasa-topbar">
+        <div class="kasa-topbar-title">İşlemler</div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px;">
+        <div class="islem-grid">
+          <!-- Rezervasyon -->
+          <div class="card islem-card">
+            <h4>⏰ Rezervasyon</h4>
+            <div class="fields">
+              <div class="flex gap8">
+                <div class="field" style="flex:1"><label>Masa</label><input type="number" id="rez-masa" placeholder="B1-B40 / S1-S40" min="1" max="40"></div>
+                <div class="field" style="flex:1"><label>Bölüm</label><select id="rez-bolum"><option value="B">Bahçe</option><option value="S">Salon</option></select></div>
+              </div>
+              <div class="flex gap8">
+                <div class="field" style="flex:1"><label>Ad Soyad</label><input type="text" id="rez-ad" placeholder="Misafir adı"></div>
+                <div class="field" style="flex:1"><label>Saat</label><input type="time" id="rez-saat"></div>
+              </div>
+              <div class="flex gap8">
+                <div class="field" style="flex:1"><label>Kişi</label><input type="number" id="rez-kisi" placeholder="2" min="1" max="50"></div>
+                <div class="field" style="flex:1;justify-content:flex-end;padding-top:18px;">
+                  <button class="btn btn-gold btn-sm w100" onclick="rezEkle()">Ekle</button>
+                </div>
+              </div>
+            </div>
+            <div id="rez-liste" class="rez-list"></div>
+          </div>
+
+          <!-- Vardiya Notu -->
+          <div class="card islem-card">
+            <h4>📝 Vardiya Notu</h4>
+            <p>Sonraki vardiyaya not bırakın.</p>
+            <div class="field">
+              <label>Not</label>
+              <textarea id="vardiya-not" rows="3" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;resize:vertical;font-size:13px;"></textarea>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="vardiyaKaydet()">Kaydet</button>
+            <div id="vardiya-goster" style="margin-top:8px;font-size:12px;color:var(--ink2);"></div>
+          </div>
+
+          <!-- Masa Birleştirme -->
+          <div class="card islem-card">
+            <h4>🔀 Masa Taşı / Birleştir</h4>
+            <p>Seçilen masanın tüm siparişlerini başka masaya taşı.</p>
+            <div class="fields">
+              <div class="flex gap8">
+                <div class="field" style="flex:1"><label>Kaynak Masa</label>
+                  <select id="tasi-kaynak"><option value="">Seç…</option></select></div>
+                <div class="field" style="flex:1"><label>Hedef Masa</label>
+                  <select id="tasi-hedef"><option value="">Seç…</option></select></div>
+              </div>
+              <button class="btn btn-gold btn-sm w100" onclick="masaTasiYap()">Taşı</button>
+            </div>
+          </div>
+
+          <!-- Açık Masalar -->
+          <div class="card islem-card">
+            <h4>🪑 Açık Masalar</h4>
+            <div id="acik-masalar-ozet" style="font-size:12px;color:var(--ink2);">Yükleniyor…</div>
+          </div>
+
+          <!-- Z Raporu -->
+          <div class="card islem-card">
+            <h4>🖨 Z Raporu</h4>
+            <p>Günlük satış raporunu yazıcıya gönderir.</p>
+            <button class="btn btn-primary btn-sm" onclick="zRaporuYazdir()">Z Raporu Bas</button>
+          </div>
+
+          <!-- Çekmece -->
+          <div class="card islem-card">
+            <h4>🗃 Para Çekmecesi</h4>
+            <p>Çekmeceyi açar (yazıcı köprüsü aktif olmalı).</p>
+            <button class="btn btn-outline btn-sm" onclick="cekmeceAc()">Çekmece Aç</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KAPANIŞ TAB -->
+    <div class="kasa-tab" id="tab-kapanis">
+      <div class="kasa-topbar">
+        <div class="kasa-topbar-title">Gün Sonu Kapanış</div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px;">
+        <div class="kapanis-content">
+          <div class="card" style="padding:20px;margin-bottom:12px;">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">Kapanış Özeti</h3>
+            <p style="font-size:12px;color:var(--ink2);margin-bottom:16px;">Gün sonunda kasayı kapatmadan önce aşağıdaki özeti kontrol edin.</p>
+            <div id="kapanis-ozet" class="loading"><div class="spinner"></div>Yükleniyor…</div>
+          </div>
+          <div class="card" style="padding:20px;margin-bottom:12px;">
+            <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">📊 Nakit Sayım</h4>
+            <div class="field">
+              <label>Kasada bulunan nakit (₺)</label>
+              <input type="number" id="nakit-sayim" placeholder="0.00" oninput="kasaNakitHesapla()">
+            </div>
+            <div id="nakit-fark" style="margin-top:8px;font-size:12px;color:var(--ink2);"></div>
+          </div>
+          <button class="btn btn-gold" style="width:100%;padding:14px;font-size:15px;" onclick="kasaKapat()">
+            Günü Kapat ve Z Raporu Al
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     GARSON EKRANI
+═══════════════════════════════════════════ -->
+<div id="garson-screen" class="screen">
+  <div id="garson-topbar">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+    </svg>
+    <span style="font-size:15px;font-weight:700;">Siparişler</span>
+    <span id="garson-count" style="font-size:12px;color:var(--ink2);"></span>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+      <span class="live-dot active" id="garson-dot"></span>
+      <button onclick="loadOrders()" style="font-size:18px;color:var(--ink2);">↺</button>
+    </div>
+  </div>
+  <div class="garson-body">
+    <!-- Sol sidebar -->
+    <div class="garson-sidebar">
+      <div class="garson-sidebar-label">Görünüm</div>
+      <button class="garson-filter-btn active" onclick="garsonFiltre('aktif',this)">🔴 Aktif Siparişler</button>
+      <button class="garson-filter-btn" onclick="garsonFiltre('masalar',this)">🪑 Masa Takibi</button>
+      <button class="garson-filter-btn" onclick="garsonFiltre('gecmis',this)">📋 Geçmiş</button>
+
+      <div class="garson-sidebar-label" style="margin-top:8px;">Aktif Masa</div>
+      <div id="garson-masa-panel" style="display:none;">
+        <div id="garson-siparis-ozet" class="garson-sidebar-panel" style="margin-bottom:6px;"></div>
+        <button class="btn btn-gold btn-sm w100" onclick="garsonUrunEkleAc()" id="garson-urun-btn">➕ Ürün Ekle</button>
+        <button class="btn btn-outline btn-sm w100 mt8" onclick="garsonMasaTasiBasla()" id="garson-tasi-btn">🔀 Masa Taşı</button>
+        <div id="garson-rez-panel" style="display:none;margin-top:6px;"></div>
+      </div>
+    </div>
+    <!-- Ana içerik -->
+    <div class="garson-main" id="garson-main">
+      <div class="orders-grid" id="orders-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     QR MÜŞTERİ MENÜsü
+═══════════════════════════════════════════ -->
+<div id="menu-screen" class="screen">
+  <div class="menu-top">
+    <div>
+      <div class="menu-top-brand">🌿 Çınar Cafe</div>
+      <div class="menu-top-masa" id="menu-masa-label"></div>
+    </div>
+  </div>
+  <div class="menu-layout">
+    <div class="menu-cats" id="menu-cats"></div>
+    <div class="menu-products" id="menu-products"></div>
+  </div>
+  <button class="menu-cart-btn" id="menu-cart-btn" onclick="sepetAc()">
+    <span>Sepeti Gör</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="cart-total">0 ₺</span>
+      <span class="menu-cart-count" id="cart-count">0</span>
+    </div>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     ADMIN PANELİ (overlay)
+═══════════════════════════════════════════ -->
+<div id="admin-overlay">
+  <div id="admin-panel">
+    <div class="admin-head">
+      <h3>⚙️ Yönetim Paneli</h3>
+      <button onclick="adminKapat()" class="btn btn-outline btn-sm">Kapat</button>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab-btn active" onclick="adminTab('menu',this)">Menü</button>
+      <button class="admin-tab-btn" onclick="adminTab('kategori',this)">Kategoriler</button>
+      <button class="admin-tab-btn" onclick="adminTab('ayarlar',this)">Ayarlar</button>
+    </div>
+    <div class="admin-content">
+      <div class="admin-tab-panel active" id="admin-menu" ></div>
+      <div class="admin-tab-panel" id="admin-kategori"></div>
+      <div class="admin-tab-panel" id="admin-ayarlar">
+        <div class="card" style="padding:16px;">
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:12px;">Kasa Şifresi</h4>
+          <div class="flex gap8">
+            <input type="password" id="yeni-sifre" placeholder="Yeni şifre" class="field" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;">
+            <button class="btn btn-primary btn-sm" onclick="sifreDegistir()">Kaydet</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════ -->
+
+<!-- Hesap Al Modal -->
+<div id="hesap-modal" class="modal-overlay hidden" onclick="if(event.target===this)hesapKapat()">
+  <div class="modal" id="hesap-modal-inner"></div>
+</div>
+
+<!-- Sepet Modal -->
+<div id="sepet-modal" class="modal-overlay hidden" onclick="if(event.target===this)sepetKapat()">
+  <div class="modal" id="sepet-modal-inner"></div>
+</div>
+
+<!-- Ürün Ekle Modal (garson) -->
+<div id="urun-ekle-modal" class="modal-overlay hidden" onclick="if(event.target===this)urunEkleKapat()">
+  <div class="modal" style="max-width:560px;" id="urun-ekle-inner"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   SUPABASE & CONFIG
+═══════════════════════════════════════════ */
+const SB_URL = 'https://ideweixmrufmwvntccid.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlkZXdlaXhtcnVmbXd2bnRjY2lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNTk3ODAsImV4cCI6MjA5NzYzNTc4MH0.--bEFF9b6KSgHH5rZVqvZNKFj3o2ZYFwd5OiZwT_Nbo';
+const sb = supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:false,autoRefreshToken:false},realtime:{worker:false}});
+
+const BAHCE_SAYISI = 40;
+const SALON_SAYISI = 40;
+const BAR_CATS = ['c1000000-0000-0000-0000-000000000005','c1000000-0000-0000-0000-000000000006',
+                  'c1000000-0000-0000-0000-000000000007','c1000000-0000-0000-0000-000000000008',
+                  'c1000000-0000-0000-0000-000000000009'];
+
+/* ═══════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════ */
+let kasaSifresi = 'cinar2026';
+let aktifBolum  = 'bahce';
+let secilenMasa = null;
+let masaMap     = {};
+let indirimTip  = 'tutar';
+let indirimVal  = 0;
+let odemeTip    = 'nakit';
+let secilenItemIds = new Set();
+// birlestirMode declared above
+let birlestirSec  = [];
+let garsonFiltresi= 'aktif';
+let garsonSecMasa = null;
+let garsonKanal   = null;
+let kasaKanal     = null;
+let menuSepet     = {};
+let menuMasa      = null;
+let menuKatData   = [];
+let menuUrunData  = {};
+let menuAktifKat  = null;
+let gueAktifMasa  = null;
+let gueSepet      = [];
+let gueKatData    = [];
+let gueUrunData   = {};
+let rezList       = [];
+
+function esc(s){ const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
+
+function toast(msg, duration=2500){
+  const t=document.createElement('div');
+  t.className='toast';t.textContent=msg;
+  const area=document.getElementById('toast-area');
+  area.appendChild(t);
+  setTimeout(()=>t.remove(),duration);
+}
+
+function fmtTL(n){ return parseFloat(n||0).toFixed(0)+' ₺'; }
+function fmtDate(d){ return new Date(d).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function today(){ const d=new Date();d.setHours(0,0,0,0);return d.toISOString(); }
+
+/* ═══════════════════════════════════════════
+   ROUTING
+═══════════════════════════════════════════ */
+(async function init(){
+  const p = new URLSearchParams(location.search);
+
+  if(p.get('garson') !== null){
+    document.getElementById('garson-screen').classList.add('open');
+    initGarson();
+  } else if(p.get('kasa') !== null || p.has('kasa')){
+    document.getElementById('kasa-login').style.display='flex';
+    setTimeout(()=>document.getElementById('kasa-pin')?.focus(),200);
+    document.getElementById('kasa-screen').classList.add('open');
+  } else if(p.get('masa') !== null){
+    const raw = p.get('masa');
+    menuMasa = /^\d+$/.test(raw) ? 'B'+raw : raw.toUpperCase();
+    const label = menuMasa.startsWith('S') ? 'Salon '+menuMasa.slice(1) : 'Bahçe '+menuMasa.slice(1);
+    document.getElementById('menu-masa-label').textContent = label;
+    document.getElementById('menu-screen').classList.add('open');
+    initMenu();
+  } else {
+    // Default: kasa
+    document.getElementById('kasa-login').style.display='flex';
+    setTimeout(()=>document.getElementById('kasa-pin')?.focus(),200);
+    document.getElementById('kasa-screen').classList.add('open');
+  }
+})();
+
+/* ═══════════════════════════════════════════
+   KASA GİRİŞ
+═══════════════════════════════════════════ */
+async function kasaGiris(){
+  const btn = document.querySelector('.kasa-login-btn');
+  const pin = (document.getElementById('kasa-pin').value || '').trim();
+  const err = document.getElementById('kasa-login-err');
+  if(!pin) return;
+  if(btn){ btn.disabled=true; btn.textContent='Kontrol ediliyor…'; }
+
+  // 1. Önce Supabase'den güncel şifreyi al (timeout: 3sn)
+  try{
+    const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),3000));
+    const query   = sb.from('settings').select('value').eq('key','kasa_sifre').single();
+    const {data}  = await Promise.race([query, timeout.then(()=>({data:null}))]);
+    if(data?.value) kasaSifresi = data.value;
+  }catch(e){}
+
+  // 2. PIN karşılaştır
+  if(pin === kasaSifresi){
+    document.getElementById('kasa-login').style.display='none';
+    initKasa();
+  } else {
+    err.textContent = 'Hatalı şifre';
+    setTimeout(()=>err.textContent='', 2500);
+    document.getElementById('kasa-pin').value='';
+    document.getElementById('kasa-pin').focus();
+    if(btn){ btn.disabled=false; btn.textContent='Giriş'; }
+  }
+}
+function kasaCikis(){
+  if(!confirm('Kasadan çıkmak istediğinize emin misiniz?')) return;
+  document.getElementById('kasa-login').style.display='flex';
+  document.getElementById('kasa-pin').value='';
+  setTimeout(()=>document.getElementById('kasa-pin').focus(),100);
+}
+
+/* ═══════════════════════════════════════════
+   KASA INIT
+═══════════════════════════════════════════ */
+function initKasa(){
+  saatGuncelle();
+  setInterval(saatGuncelle,30000);
+  kasaYenile();
+  kasaRealtimeBaglan();
+  raporYukle();
+  islemlerYukle();
+  setInterval(kasaYenile, 15000);
+}
+function saatGuncelle(){
+  const s = document.getElementById('kasa-saat');
+  if(s) s.textContent = new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* ═══════════════════════════════════════════
+   KASA TAB
+═══════════════════════════════════════════ */
+function kasaTabAc(tabId, btn){
+  document.querySelectorAll('.kasa-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.kasa-nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tabId)?.classList.add('active');
+  btn?.classList.add('active');
+  if(tabId==='rapor') raporYukle();
+  if(tabId==='gecmis') gecmisYukle();
+  if(tabId==='islemler') islemlerYukle();
+  if(tabId==='kapanis') kapanisHazirla();
+}
+
+/* ═══════════════════════════════════════════
+   KASA YENİLE (ana veri çek)
+═══════════════════════════════════════════ */
+async function kasaYenile(){
+  const {data} = await sb.from('orders')
+    .select('id,table_number,total_price,status,created_at,order_items(id,product_name,quantity,unit_price)')
+    .in('status',['yeni','hazirlaniyor','hazir'])
+    .gte('created_at', today());
+
+  masaMap = {};
+  for(const o of (data||[])){
+    const t = o.table_number;
+    if(!masaMap[t]) masaMap[t]={orders:[],toplam:0,bekleyen:0};
+    masaMap[t].orders.push(o);
+    masaMap[t].toplam += parseFloat(o.total_price||0);
+    if(o.status==='yeni') masaMap[t].bekleyen++;
+  }
+
+  // Ciro
+  const {data:done} = await sb.from('orders').select('total_price').eq('status','teslim').gte('created_at',today());
+  const ciro = (done||[]).reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+  const navCiro = document.getElementById('nav-ciro');
+  if(navCiro) navCiro.textContent = fmtTL(ciro);
+
+  const badge = document.getElementById('nav-badge-acik');
+  const acikSayi = Object.keys(masaMap).length;
+  if(badge){ badge.textContent=acikSayi; badge.style.display=acikSayi?'inline':'none'; }
+
+  masaGridYukle();
+  if(secilenMasa && masaMap[secilenMasa]) masaDetayGoster(secilenMasa);
+  else if(secilenMasa && !masaMap[secilenMasa]){
+    secilenMasa=null;
+    aksiyonBarGizle();
+    sag('empty');
+  }
+  acikMasalarOzetYukle();
+}
+
+/* ═══════════════════════════════════════════
+   MASA GRİD
+═══════════════════════════════════════════ */
+function bolumSec(bolum, btn){
+  aktifBolum = bolum;
+  secilenMasa = null;
+  aksiyonBarGizle();
+  sag('empty');
+  birlestirSec = [];
+  document.getElementById('btn-bahce')?.classList.toggle('active', bolum==='bahce');
+  document.getElementById('btn-salon')?.classList.toggle('active', bolum==='salon');
+  masaGridYukle();
+}
+
+async function masaGridYukle(){
+  const grid = document.getElementById('masa-grid');
+  if(!grid) return;
+  const prefix  = aktifBolum==='bahce' ? 'B' : 'S';
+  const count   = aktifBolum==='bahce' ? BAHCE_SAYISI : SALON_SAYISI;
+  const rezData = await _rezGetir();
+  const rezMap  = {};
+  for(const r of rezData) rezMap[String(r.masa)] = r;
+
+  let html = '';
+  for(let i=1; i<=count; i++){
+    const key   = prefix+i;
+    const m     = masaMap[key];
+    const rez   = rezMap[key];
+    const sel   = secilenMasa===key;
+    const birSec= birlestirSec.includes(key);
+
+    let cls = 'masa-card';
+    if(sel || birSec) cls += ' selected';
+    else if(m) cls += ' occupied';
+    else if(rez && !m) cls += ' reserved';
+
+    let dot = '';
+    if(m){
+      const hasBekleyen = m.bekleyen > 0;
+      dot = `<div class="masa-dot ${hasBekleyen?'red':'amber'}"></div>`;
+    }
+    if(rez && !m) dot = `<div class="masa-dot" style="background:#60A5FA;"></div>`;
+
+    const tutar = m ? `<div class="masa-card-tutar">${fmtTL(m.toplam)}</div>` : '';
+    const rezBadge = (rez && !m) ? `<div style="font-size:8px;color:#3B82F6;margin-top:2px;">REZERVE</div>` : '';
+
+    html += `<div class="${cls}" onclick="masaSec('${key}')">${dot}
+      <div class="masa-card-no">${i}</div>${tutar}${rezBadge}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function masaSec(key){
+  if(birlestirMode){
+    birlestirToggle(key);
+    return;
+  }
+  secilenMasa = key;
+  indirimTip = 'tutar';
+  indirimVal = 0;
+  odemeTip = 'nakit';
+  secilenItemIds.clear();
+  masaGridYukle();
+  masaDetayGoster(key);
+  aksiyonBarGoster(key);
+}
+
+/* ═══════════════════════════════════════════
+   DETAY PANELİ
+═══════════════════════════════════════════ */
+function sag(mode, html=''){
+  const r = document.getElementById('masalar-right');
+  if(!r) return;
+  if(mode==='empty'){
+    r.innerHTML = `<div class="detay-empty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+      <span>Bir masaya tıklayın</span></div>`;
+  } else {
+    r.innerHTML = html;
+  }
+}
+
+function masaDetayGoster(key){
+  const m = masaMap[key];
+  if(!m){ sag('empty'); return; }
+
+  const bolumAdi = key.startsWith('S') ? 'Salon' : 'Bahçe';
+  const masaNo   = key.slice(1);
+  const araToplam= m.toplam;
+  const net      = Math.max(0, araToplam - (indirimTip==='yuzde' ? araToplam*(indirimVal/100) : indirimVal));
+
+  // Siparişleri grupla
+  let ordersHtml = '';
+  let allItemIds = [];
+  for(const o of m.orders){
+    const statusLabel = {yeni:'Yeni',hazirlaniyor:'Hazırlanıyor',hazir:'Hazır ✓'}[o.status]||o.status;
+    const statusCls   = {yeni:'badge-red',hazirlaniyor:'badge-amber',hazir:'badge-green'}[o.status]||'badge-gold';
+    let itemsHtml = '';
+    for(const it of (o.order_items||[])){
+      allItemIds.push(it.id);
+      const chk = secilenItemIds.has(it.id) ? 'checked' : '';
+      itemsHtml += `<div class="order-item-row">
+        <div class="order-item-check"><input type="checkbox" ${chk} onchange="itemSec('${it.id}',this.checked)" id="chk-${it.id}"></div>
+        <div class="order-item-name">${esc(it.product_name)}</div>
+        <div class="order-item-qty">${it.quantity}×</div>
+        <div class="order-item-price">${fmtTL((it.unit_price||0)*it.quantity)}</div>
+      </div>`;
+    }
+    ordersHtml += `<div class="order-group">
+      <div class="order-group-head">
+        <span class="badge ${statusCls}">${statusLabel}</span>
+        <span>${fmtDate(o.created_at)}</span>
+      </div>${itemsHtml}
+    </div>`;
+  }
+
+  const secCount = allItemIds.filter(id=>secilenItemIds.has(id)).length;
+
+  sag('html', `
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <div class="detay-head">
+        <div class="detay-masa-no">${bolumAdi} ${masaNo}</div>
+        <div class="detay-status">${m.orders.length} sipariş · ${Object.values(masaMap[key]?.orders||[]).length} fiş</div>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn btn-outline btn-sm" onclick="urunEkleAc('${key}')">➕ Ürün</button>
+        </div>
+      </div>
+      <div class="detay-orders" style="flex:1;overflow-y:auto;">${ordersHtml}</div>
+      ${secCount > 0 ? `<div class="tasi-bar show" id="tasi-bar-inner">
+        <span class="tasi-bar-txt">${secCount} ürün seçildi</span>
+        <button class="btn btn-gold btn-sm" onclick="urunTasiModal()">Taşı →</button>
+        <button class="btn btn-outline btn-sm" onclick="hepsiniSec(false)">İptal</button>
+      </div>` : ''}
+      <div class="detay-foot">
+        <div class="indirim-row">
+          <input type="number" placeholder="İndirim" min="0" value="${indirimVal||''}"
+                 oninput="indirimVal=parseFloat(this.value)||0;masaDetayGuncelle('${key}')"
+                 style="width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;">
+          <div class="tip-group">
+            <button class="tip-btn ${indirimTip==='tutar'?'active':''}" onclick="indirimTip='tutar';this.classList.add('active');this.nextElementSibling.classList.remove('active');masaDetayGuncelle('${key}')">₺</button>
+            <button class="tip-btn ${indirimTip==='yuzde'?'active':''}" onclick="indirimTip='yuzde';this.classList.add('active');this.previousElementSibling.classList.remove('active');masaDetayGuncelle('${key}')">%</button>
+          </div>
+        </div>
+        <div class="total-row">
+          <span class="total-label">Ara Toplam</span>
+          <span style="font-size:14px;font-weight:600;">${fmtTL(araToplam)}</span>
+        </div>
+        ${indirimVal > 0 ? `<div class="total-row">
+          <span class="total-label" style="color:var(--green);">İndirim</span>
+          <span style="font-size:14px;color:var(--green);font-weight:600;">−${fmtTL(indirimTip==='yuzde'?araToplam*(indirimVal/100):indirimVal)}</span>
+        </div>` : ''}
+        <div class="total-row">
+          <span class="total-label fw7">Ödenecek</span>
+          <span class="total-val ${indirimVal>0?'total-net':''}">${fmtTL(net)}</span>
+        </div>
+        <div class="odeme-group">
+          ${['nakit','kart','havale'].map(o=>`<button class="odeme-btn ${odemeTip===o?'active':''}" onclick="odemeTip='${o}';document.querySelectorAll('.odeme-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${{nakit:'💵 Nakit',kart:'💳 Kart',havale:'📱 Havale'}[o]}</button>`).join('')}
+        </div>
+        <div class="action-row">
+          <button class="btn btn-gold" style="flex:2;" onclick="hesapAl('${key}',${araToplam})">💰 Hesap Al</button>
+          <button class="btn btn-outline" onclick="adisyonBas('${key}')">🖨 Adisyon</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+function masaDetayGuncelle(key){ masaDetayGoster(key); }
+
+function itemSec(id, checked){
+  if(checked) secilenItemIds.add(id);
+  else secilenItemIds.delete(id);
+  masaDetayGoster(secilenMasa);
+}
+function hepsiniSec(v){
+  if(!secilenMasa||!masaMap[secilenMasa]) return;
+  secilenItemIds.clear();
+  if(v) masaMap[secilenMasa].orders.forEach(o=>o.order_items.forEach(it=>secilenItemIds.add(it.id)));
+  masaDetayGoster(secilenMasa);
+}
+
+/* ═══════════════════════════════════════════
+   ÜRÜN TAŞIMA
+═══════════════════════════════════════════ */
+function urunTasiModal(){
+  const actifOrders = Object.keys(masaMap).filter(k=>k!==secilenMasa);
+  const opts = actifOrders.map(k=>`<option value="${k}">${k.startsWith('S')?'Salon':'Bahçe'} ${k.slice(1)} (${fmtTL(masaMap[k].toplam)})</option>`).join('');
+  const modal = document.getElementById('hesap-modal-inner');
+  modal.innerHTML = `
+    <div class="modal-head"><h3>📦 Ürün Taşı</h3><button onclick="hesapKapat()" style="font-size:20px;color:var(--ink2);">×</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--ink2);margin-bottom:12px;">${secilenItemIds.size} ürün seçildi. Hangi masaya taşınsın?</p>
+      <div class="field">
+        <label>Hedef Masa</label>
+        <select id="tasi-hedef-modal" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;">
+          <option value="">Seç…</option>${opts}
+          <option value="__yeni__">Yeni masa aç…</option>
+        </select>
+      </div>
+      <div id="yeni-masa-sec" style="display:none;margin-top:8px;">
+        <div class="field">
+          <label>Yeni Masa Numarası</label>
+          <select id="yeni-masa-bolum" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+            <option value="B">Bahçe</option><option value="S">Salon</option>
+          </select>
+          <input type="number" id="yeni-masa-no" placeholder="1-40" min="1" max="40"
+                 style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="hesapKapat()">İptal</button>
+      <button class="btn btn-gold" onclick="urunTasiYap()">Taşı</button>
+    </div>`;
+  document.getElementById('tasi-hedef-modal').addEventListener('change', function(){
+    document.getElementById('yeni-masa-sec').style.display = this.value==='__yeni__' ? 'block' : 'none';
+  });
+  document.getElementById('hesap-modal').classList.remove('hidden');
+}
+
+async function urunTasiYap(){
+  const hedefSel = document.getElementById('tasi-hedef-modal')?.value;
+  let hedefKey;
+  if(hedefSel === '__yeni__'){
+    const bolum = document.getElementById('yeni-masa-bolum')?.value || 'B';
+    const no    = document.getElementById('yeni-masa-no')?.value;
+    if(!no){ toast('Masa numarası girin'); return; }
+    hedefKey = bolum + no;
+  } else {
+    hedefKey = hedefSel;
+  }
+  if(!hedefKey){ toast('Hedef masa seçin'); return; }
+  if(hedefKey === secilenMasa){ toast('Aynı masa seçilemez'); return; }
+
+  const ids = [...secilenItemIds];
+  if(!ids.length){ toast('Ürün seçilmedi'); return; }
+
+  // Seçili item'ları bul ve kopyala
+  const hedefOrders = masaMap[hedefKey]?.orders || [];
+  let hedefOrderId  = hedefOrders[0]?.id || null;
+
+  // Hedef masada sipariş yoksa yeni oluştur
+  if(!hedefOrderId){
+    const {data:newOrder} = await sb.from('orders').insert({
+      table_number: hedefKey, status:'yeni', total_price:0
+    }).select('id').single();
+    if(!newOrder){ toast('Hata: sipariş oluşturulamadı'); return; }
+    hedefOrderId = newOrder.id;
+  }
+
+  // Seçili item'ları al
+  const {data:items} = await sb.from('order_items').select('*').in('id', ids);
+  if(!items?.length){ toast('Ürünler bulunamadı'); return; }
+
+  // Hedef masaya ekle
+  const newItems = items.map(it=>({
+    order_id: hedefOrderId,
+    product_name: it.product_name,
+    quantity: it.quantity,
+    unit_price: it.unit_price
+  }));
+  await sb.from('order_items').insert(newItems);
+
+  // Kaynak masadan sil
+  await sb.from('order_items').delete().in('id', ids);
+
+  // Toplam güncelle
+  await toplamGuncelle(secilenMasa);
+  await toplamGuncelle(hedefKey);
+
+  secilenItemIds.clear();
+  hesapKapat();
+  toast(`✓ ${ids.length} ürün ${hedefKey.startsWith('S')?'Salon':'Bahçe'} ${hedefKey.slice(1)}'e taşındı`);
+  await kasaYenile();
+}
+
+async function toplamGuncelle(masaKey){
+  if(!masaKey) return;
+  const {data:orders} = await sb.from('orders').select('id').eq('table_number',masaKey).in('status',['yeni','hazirlaniyor','hazir']);
+  for(const o of (orders||[])){
+    const {data:items} = await sb.from('order_items').select('quantity,unit_price').eq('order_id',o.id);
+    const total = (items||[]).reduce((s,it)=>s+it.quantity*(it.unit_price||0),0);
+    await sb.from('orders').update({total_price:total.toFixed(2)}).eq('id',o.id);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   AKSİYON BARI
+═══════════════════════════════════════════ */
+function aksiyonBarGoster(key){
+  const bar   = document.getElementById('aksiyon-bar');
+  const title = document.getElementById('aksiyon-bar-title');
+  const btns  = document.getElementById('aksiyon-btns');
+  if(!bar) return;
+
+  const m   = masaMap[key];
+  const rez = null; // basit versiyon
+  const bolumAdi = key.startsWith('S') ? 'Salon' : 'Bahçe';
+  const no       = key.slice(1);
+
+  if(title) title.textContent = `${bolumAdi} ${no} — ${m ? 'Aktif' : 'Boş'}`;
+
+  let html = '';
+  const btn = (icon,label,onclick) =>
+    `<button class="aksiyon-btn" onclick="${onclick}"><span class="icon">${icon}</span>${label}</button>`;
+
+  if(m){
+    html += btn('➕','Ürün Ekle',`urunEkleAc('${key}')`);
+    html += btn('💰','Hesap Al',`hesapAl('${key}',${m.toplam})`);
+    html += btn('🖨','Adisyon Bas',`adisyonBas('${key}')`);
+    html += btn('📦','Ürün Taşı',`hepsiniSec(true)`);
+    html += btn('⏰','Rezervasyon',`rezMasaDoldur('${key}')`);
+  } else {
+    html += btn('➕','Sipariş Aç',`urunEkleAc('${key}')`);
+    html += btn('⏰','Rezervasyon Ekle',`rezMasaDoldur('${key}')`);
+  }
+
+  if(btns) btns.innerHTML = html;
+  bar.classList.remove('hidden');
+}
+function aksiyonBarGizle(){
+  document.getElementById('aksiyon-bar')?.classList.add('hidden');
+}
+
+/* ═══════════════════════════════════════════
+   HESAP AL
+═══════════════════════════════════════════ */
+function hesapAl(key, araToplam){
+  const indir = indirimTip==='yuzde' ? araToplam*(indirimVal/100) : indirimVal;
+  const net   = Math.max(0, araToplam - indir);
+  const bolumAdi = key.startsWith('S') ? 'Salon' : 'Bahçe';
+  const no       = key.slice(1);
+
+  const modal = document.getElementById('hesap-modal-inner');
+  const m = masaMap[key];
+  if(!m){ toast('Bu masada sipariş yok'); return; }
+
+  let urunlerHtml = '';
+  const allIds = [];
+  for(const o of m.orders){
+    for(const it of (o.order_items||[])){
+      allIds.push(o.id);
+      urunlerHtml += `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <span>${it.quantity}× ${esc(it.product_name)}</span>
+        <span style="font-weight:600;">${fmtTL((it.unit_price||0)*it.quantity)}</span>
+      </div>`;
+    }
+  }
+  const orderIds = [...new Set(m.orders.map(o=>o.id))];
+
+  modal.innerHTML = `
+    <div class="modal-head">
+      <h3>💰 Hesap — ${bolumAdi} ${no}</h3>
+      <button onclick="hesapKapat()" style="font-size:20px;color:var(--ink2);">×</button>
+    </div>
+    <div class="modal-body">
+      ${urunlerHtml}
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;">
+        <span>Ara Toplam</span><span style="font-weight:700;">${fmtTL(araToplam)}</span>
+      </div>
+      ${indir>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--green);margin-bottom:6px;">
+        <span>İndirim</span><span style="font-weight:700;">−${fmtTL(indir)}</span>
+      </div>`:''}
+      <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:4px;">
+        <span>Ödenecek</span><span style="color:var(--gold);">${fmtTL(net)}</span>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:8px;">ÖDEME YÖNTEMİ</div>
+      <div class="odeme-group" id="hesap-odeme-group">
+        ${['nakit','kart','havale'].map(o=>`<button class="odeme-btn ${odemeTip===o?'active':''}" onclick="odemeTip='${o}';document.querySelectorAll('#hesap-odeme-group .odeme-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${{nakit:'💵 Nakit',kart:'💳 Kart',havale:'📱 Havale'}[o]}</button>`).join('')}
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="hesapKapat()">İptal</button>
+      <button class="btn btn-outline" onclick="adisyonBas('${key}');hesapKapat()">🖨 Sadece Adisyon</button>
+      <button class="btn btn-gold" id="hesap-onayla-btn" onclick="hesapOnayla('${key}',${araToplam},${indir},[${orderIds.map(id=>`'${id}'`).join(',')}])">✓ Hesabı Kapat</button>
+    </div>`;
+  document.getElementById('hesap-modal').classList.remove('hidden');
+}
+function hesapKapat(){ document.getElementById('hesap-modal').classList.add('hidden'); }
+
+async function hesapOnayla(key, araToplam, indirim, orderIds){
+  const btn = document.getElementById('hesap-onayla-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Kapatılıyor…'; }
+  const net = Math.max(0, araToplam - indirim);
+  const indPerOrder = orderIds.length ? indirim/orderIds.length : 0;
+
+  for(const id of orderIds){
+    const {data:o} = await sb.from('orders').select('total_price').eq('id',id).single();
+    const orderNet = Math.max(0, parseFloat(o?.total_price||0) - indPerOrder);
+    await sb.from('orders').update({
+      status:'teslim',
+      total_price: orderNet.toFixed(2),
+      indirim_tutar: indPerOrder > 0 ? indPerOrder.toFixed(2) : 0,
+      odeme_yontemi: odemeTip,
+      delivered_at: new Date().toISOString()
+    }).eq('id',id);
+  }
+
+  hesapKapat();
+  secilenMasa = null;
+  aksiyonBarGizle();
+  sag('empty');
+  indirimVal = 0;
+  toast(`✓ Hesap alındı — ${fmtTL(net)}`);
+  await kasaYenile();
+  if(typeof loadOrders === 'function') loadOrders().catch(()=>{});
+}
+
+/* ═══════════════════════════════════════════
+   ADİSYON BAS
+═══════════════════════════════════════════ */
+async function adisyonBas(key){
+  const {data} = await sb.from('settings').select('value').eq('key','adisyon_talep').single().catch(()=>({data:null}));
+  await sb.from('settings').upsert([{key:'adisyon_talep', value:JSON.stringify({masa:key,ts:Date.now()})}]);
+  toast('🖨 Adisyon yazdırılıyor…');
+}
+async function zRaporuYazdir(){
+  await sb.from('settings').upsert([{key:'z_raporu_talep', value:new Date().toISOString()}]);
+  toast('🖨 Z Raporu gönderildi');
+}
+async function cekmeceAc(){
+  await sb.from('settings').upsert([{key:'cekmece_ac', value:new Date().toISOString()}]);
+  toast('🗃 Çekmece komutu gönderildi');
+}
+
+/* ═══════════════════════════════════════════
+   MASA BİRLEŞTİRME
+═══════════════════════════════════════════ */
+// birlestirMode declared above
+function birlestirMod(){
+  birlestirMode = !birlestirMode;
+  birlestirSec  = [];
+  secilenMasa   = null;
+  aksiyonBarGizle();
+  sag('empty');
+  masaGridYukle();
+  const btn = document.getElementById('birlestir-btn');
+  if(btn) btn.style.color = birlestirMode ? 'var(--gold)' : '';
+  if(birlestirMode) toast('2 masa seçin → birleştirilecek');
+}
+function birlestirToggle(key){
+  if(!masaMap[key]){ toast('Sadece aktif masalar seçilebilir'); return; }
+  const idx = birlestirSec.indexOf(key);
+  if(idx>=0) birlestirSec.splice(idx,1);
+  else if(birlestirSec.length<2) birlestirSec.push(key);
+  if(birlestirSec.length===2){
+    if(confirm(`${birlestirSec[0]} → ${birlestirSec[1]} masasına taşınsın mı?`)) masaBirlestir();
+    else birlestirSec=[];
+  }
+  masaGridYukle();
+}
+async function masaBirlestir(){
+  const [kaynak,hedef] = birlestirSec;
+  await sb.from('orders').update({table_number:hedef}).eq('table_number',kaynak).in('status',['yeni','hazirlaniyor','hazir']);
+  toast(`✓ ${kaynak} → ${hedef} taşındı`);
+  birlestirMode=false; birlestirSec=[];
+  await kasaYenile();
+}
+</script>
+<script>
+/* ═══════════════════════════════════════════
+   ÜRÜN EKLE (Kasa + Garson)
+═══════════════════════════════════════════ */
+async function urunEkleAc(masaKey){
+  gueAktifMasa = masaKey;
+  gueSepet = [];
+  const modal = document.getElementById('urun-ekle-inner');
+  modal.innerHTML = `<div class="modal-head"><h3>➕ Ürün Ekle — ${masaKey.startsWith('S')?'Salon':'Bahçe'} ${masaKey.slice(1)}</h3>
+    <button onclick="urunEkleKapat()" style="font-size:20px;color:var(--ink2);">×</button></div>
+    <div class="modal-body" id="gue-body"><div class="loading"><div class="spinner"></div>Yükleniyor…</div></div>
+    <div class="modal-foot" id="gue-foot" style="display:none;flex-direction:column;gap:8px;">
+      <div id="gue-sepet-ozet" style="font-size:13px;font-weight:600;color:var(--ink2);"></div>
+      <div style="display:flex;gap:8px;">
+        <div class="field" style="flex:1"><label>Not</label><input type="text" id="gue-not" placeholder="Opsiyonel"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="urunEkleKapat()">İptal</button>
+        <button class="btn btn-gold" id="gue-gonder-btn" onclick="siparisGonder()">✓ Sipariş Ver</button>
+      </div>
+    </div>`;
+  document.getElementById('urun-ekle-modal').classList.remove('hidden');
+  await gueKatYukle();
+}
+function urunEkleKapat(){ document.getElementById('urun-ekle-modal').classList.add('hidden'); }
+
+async function gueKatYukle(){
+  if(!gueKatData.length){
+    const {data} = await sb.from('categories').select('id,name_tr,image_url').order('sort_order');
+    gueKatData = data||[];
+  }
+  if(!gueAktifKat && gueKatData.length) gueAktifKat = gueKatData[0].id;
+  const body = document.getElementById('gue-body');
+  if(!body) return;
+  const katHtml = gueKatData.map(k=>`<button class="menu-cat-btn ${gueAktifKat===k.id?'active':''}" onclick="gueKatSec('${k.id}')">${esc(k.name_tr)}</button>`).join('');
+  body.innerHTML = `<div style="display:flex;gap:0;min-height:300px;">
+    <div style="width:110px;flex:none;overflow-y:auto;padding:6px;border-right:1px solid var(--border);">${katHtml}</div>
+    <div style="flex:1;overflow-y:auto;padding:8px;" id="gue-urun-grid"><div class="loading"><div class="spinner"></div></div></div>
+  </div>`;
+  await gueUrunYukle(gueAktifKat);
+}
+async function gueKatSec(katId){
+  gueAktifKat = katId;
+  document.querySelectorAll('.menu-cat-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===gueKatData.find(k=>k.id===katId)?.name_tr));
+  // Düzeltilmiş seçim
+  document.querySelectorAll('.menu-cat-btn').forEach((b,i)=>b.classList.toggle('active', gueKatData[i]?.id===katId));
+  await gueUrunYukle(katId);
+}
+async function gueUrunYukle(katId){
+  const grid = document.getElementById('gue-urun-grid');
+  if(!grid) return;
+  if(!gueUrunData[katId]){
+    const {data} = await sb.from('products').select('id,name_tr,price').eq('category_id',katId).eq('active',true).order('sort_order');
+    gueUrunData[katId] = data||[];
+  }
+  const urunler = gueUrunData[katId];
+  grid.innerHTML = urunler.length ? urunler.map(u=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-size:13px;font-weight:600;">${esc(u.name_tr)}</div>
+        <div style="font-size:12px;color:var(--gold);font-weight:700;">${fmtTL(u.price)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button onclick="gueDegistir('${u.id}','${esc(u.name_tr)}',${u.price},-1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);font-size:16px;background:var(--bg);">−</button>
+        <span id="gue-qty-${u.id}" style="font-size:14px;font-weight:700;min-width:20px;text-align:center;">${gueSepet.find(s=>s.id===u.id)?.qty||0}</span>
+        <button onclick="gueDegistir('${u.id}','${esc(u.name_tr)}',${u.price},1)" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--gold);color:#fff;font-size:16px;">+</button>
+      </div>
+    </div>`).join('') : '<div style="padding:20px;text-align:center;color:var(--ink3);">Bu kategoride ürün yok.</div>';
+}
+function gueDegistir(id,name,price,delta){
+  const idx = gueSepet.findIndex(s=>s.id===id);
+  if(idx>=0){ gueSepet[idx].qty += delta; if(gueSepet[idx].qty<=0) gueSepet.splice(idx,1); }
+  else if(delta>0) gueSepet.push({id,name,price,qty:1});
+  const el = document.getElementById('gue-qty-'+id);
+  if(el) el.textContent = gueSepet.find(s=>s.id===id)?.qty||0;
+  const foot = document.getElementById('gue-foot');
+  const ozet = document.getElementById('gue-sepet-ozet');
+  const toplam = gueSepet.reduce((s,i)=>s+i.qty*i.price,0);
+  if(gueSepet.length && foot){ foot.style.display='flex'; if(ozet) ozet.textContent=`${gueSepet.length} çeşit · ${fmtTL(toplam)}`; }
+  else if(foot){ foot.style.display='none'; }
+}
+
+async function siparisGonder(){
+  if(!gueSepet.length){ toast('Ürün seçin'); return; }
+  const btn = document.getElementById('gue-gonder-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Gönderiliyor…'; }
+  const not = document.getElementById('gue-not')?.value||null;
+  const toplam = gueSepet.reduce((s,i)=>s+i.qty*i.price,0);
+  const {data:order,error} = await sb.from('orders').insert({
+    table_number: gueAktifMasa, status:'yeni', total_price:toplam.toFixed(2), note:not
+  }).select('id').single();
+  if(error||!order){ toast('Hata: '+error?.message); if(btn){btn.disabled=false;btn.textContent='✓ Sipariş Ver';} return; }
+  const items = gueSepet.map(i=>({order_id:order.id,product_name:i.name,quantity:i.qty,unit_price:i.price}));
+  await sb.from('order_items').insert(items);
+  // Bridge'e sinyal
+  setTimeout(()=>sb.from('orders').update({status:'yeni'}).eq('id',order.id).catch(()=>{}),800);
+  urunEkleKapat();
+  toast('✓ Sipariş verildi');
+  gueSepet=[];
+  gueUrunData={};
+  await kasaYenile();
+  if(typeof loadOrders==='function') loadOrders().catch(()=>{});
+}
+
+/* ═══════════════════════════════════════════
+   RAPOR
+═══════════════════════════════════════════ */
+async function raporYukle(){
+  const el = document.getElementById('rapor-content');
+  if(!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Yükleniyor…</div>';
+  const tarihEl = document.getElementById('rapor-tarih');
+  if(tarihEl) tarihEl.textContent = new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'});
+  try{
+    const {data} = await sb.from('orders')
+      .select('total_price,odeme_yontemi,status,created_at,order_items(product_name,quantity)')
+      .gte('created_at',today()).neq('status','silindi');
+    const teslim = (data||[]).filter(o=>o.status==='teslim');
+    const ciro   = teslim.reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+    const nakit  = teslim.filter(o=>o.odeme_yontemi==='nakit').reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+    const kart   = teslim.filter(o=>o.odeme_yontemi==='kart').reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+    const havale = teslim.filter(o=>o.odeme_yontemi==='havale').reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+    const ort    = teslim.length ? (ciro/teslim.length).toFixed(0) : 0;
+    const aktif  = (data||[]).filter(o=>['yeni','hazirlaniyor','hazir'].includes(o.status)).length;
+    const maxOd  = Math.max(nakit,kart,havale,1);
+    const urunMap= {};
+    (data||[]).forEach(o=>(o.order_items||[]).forEach(it=>{urunMap[it.product_name]=(urunMap[it.product_name]||0)+it.quantity;}));
+    const top10  = Object.entries(urunMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const maxU   = top10[0]?.[1]||1;
+    const saatMap= {};
+    teslim.forEach(o=>{const h=new Date(o.created_at).getHours();saatMap[h]=(saatMap[h]||0)+parseFloat(o.total_price||0);});
+    const saatlar= Object.entries(saatMap).sort((a,b)=>a[0]-b[0]);
+    const maxS   = saatlar.length ? Math.max(...saatlar.map(s=>s[1])) : 1;
+
+    el.innerHTML = `
+    <div class="rapor-grid">
+      <div class="card rapor-card">
+        <div class="rapor-card-title">Günlük Özet</div>
+        <div class="rapor-stat-grid">
+          <div class="rapor-stat"><div class="rapor-stat-val" style="color:var(--gold);">${fmtTL(ciro)}</div><div class="rapor-stat-lab">Toplam Ciro</div></div>
+          <div class="rapor-stat"><div class="rapor-stat-val">${teslim.length}</div><div class="rapor-stat-lab">Kapalı Hesap</div></div>
+          <div class="rapor-stat"><div class="rapor-stat-val" style="color:var(--green);">${fmtTL(ort)}</div><div class="rapor-stat-lab">Ort. Hesap</div></div>
+          <div class="rapor-stat"><div class="rapor-stat-val" style="color:var(--amber);">${aktif}</div><div class="rapor-stat-lab">Aktif Sipariş</div></div>
+        </div>
+      </div>
+      <div class="card rapor-card">
+        <div class="rapor-card-title">Ödeme Dağılımı</div>
+        ${[['💵 Nakit',nakit],['💳 Kart',kart],['📱 Havale',havale]].map(([l,v])=>`
+        <div class="bar-row">
+          <span class="bar-label">${l}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${(v/maxOd*100).toFixed(0)}%"></div></div>
+          <span class="bar-val">${fmtTL(v)}</span>
+        </div>`).join('')}
+      </div>
+      <div class="card rapor-card">
+        <div class="rapor-card-title">En Çok Satanlar</div>
+        ${top10.length ? top10.map(([n,c])=>`
+        <div class="urun-row">
+          <span class="urun-name">${esc(n)}</span>
+          <div class="bar-track" style="flex:2;"><div class="bar-fill" style="width:${(c/maxU*100).toFixed(0)}%"></div></div>
+          <span class="urun-count">${c}</span>
+        </div>`).join('') : '<div style="padding:10px;color:var(--ink3);font-size:12px;">Henüz satış yok.</div>'}
+      </div>
+      <div class="card rapor-card">
+        <div class="rapor-card-title">Saatlik Ciro</div>
+        ${saatlar.length ? saatlar.map(([h,c])=>`
+        <div class="bar-row">
+          <span class="bar-label" style="min-width:36px;">${h}:00</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${(c/maxS*100).toFixed(0)}%"></div></div>
+          <span class="bar-val">${fmtTL(c)}</span>
+        </div>`).join('') : '<div style="padding:10px;color:var(--ink3);font-size:12px;">Henüz satış yok.</div>'}
+      </div>
+    </div>`;
+  }catch(e){
+    el.innerHTML = `<div class="card" style="padding:20px;color:var(--red);">Yükleme hatası: ${e.message}</div>`;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   GEÇMİŞ
+═══════════════════════════════════════════ */
+let gecmisAltTab = 'tum';
+function gecmisAlt(tab,btn){
+  gecmisAltTab=tab;
+  document.querySelectorAll('.gecmis-subtab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  gecmisYukle();
+}
+async function gecmisYukle(){
+  const el = document.getElementById('gecmis-content');
+  if(!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Yükleniyor…</div>';
+  const gunVal = parseInt(document.getElementById('gecmis-gun')?.value||0);
+  const baslangic = new Date(); baslangic.setDate(baslangic.getDate()-gunVal); baslangic.setHours(0,0,0,0);
+  let q = sb.from('orders').select('id,table_number,total_price,indirim_tutar,odeme_yontemi,delivered_at,order_items(product_name,quantity)')
+    .eq('status','teslim').gte('created_at',baslangic.toISOString()).order('delivered_at',{ascending:false}).limit(100);
+  if(gecmisAltTab==='indirim') q = q.gt('indirim_tutar',0);
+  const {data} = await q;
+  if(!data?.length){ el.innerHTML='<div style="padding:40px;text-align:center;color:var(--ink3);">Kayıt bulunamadı.</div>'; return; }
+
+  const topIndirim = data.reduce((s,o)=>s+parseFloat(o.indirim_tutar||0),0);
+  const topCiro    = data.reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+  const odemeIcon  = {nakit:'💵',kart:'💳',havale:'📱'};
+
+  let html = `<div style="padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;gap:16px;font-size:12px;">
+    <span><b>${data.length}</b> hesap</span>
+    <span style="color:var(--gold);"><b>${fmtTL(topCiro)}</b> toplam</span>
+    ${topIndirim>0?`<span style="color:var(--green);">−<b>${fmtTL(topIndirim)}</b> indirim</span>`:''}
+  </div><div class="gecmis-list">`;
+
+  for(const o of data){
+    const indirim = parseFloat(o.indirim_tutar||0);
+    const net     = parseFloat(o.total_price||0);
+    const urunler = (o.order_items||[]).slice(0,4).map(it=>`${it.quantity}× ${it.product_name}`).join(' · ');
+    const fazla   = (o.order_items||[]).length > 4 ? ` +${o.order_items.length-4}` : '';
+    html += `<div class="card gecmis-card">
+      <div class="gecmis-card-head">
+        <span class="gecmis-masa">${o.table_number.startsWith('S')?'Salon':'Bahçe'} ${o.table_number.slice(1)}</span>
+        <span class="gecmis-time">${o.delivered_at ? fmtDate(o.delivered_at) : '—'}</span>
+      </div>
+      <div class="gecmis-items">${esc(urunler)}${fazla}</div>
+      <div class="gecmis-prices">
+        ${indirim>0?`<span class="gecmis-indirim">−${fmtTL(indirim)}</span>`:''}
+        <span class="gecmis-net">${fmtTL(net)}</span>
+        <span class="gecmis-odeme">${odemeIcon[o.odeme_yontemi]||''} ${o.odeme_yontemi||''}</span>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html + '</div>';
+}
+
+/* ═══════════════════════════════════════════
+   İŞLEMLER
+═══════════════════════════════════════════ */
+async function islemlerYukle(){
+  acikMasalarOzetYukle();
+  rezListeYukle();
+  vardiyaNotYukle();
+  tasiSelectDoldur();
+}
+async function acikMasalarOzetYukle(){
+  const el = document.getElementById('acik-masalar-ozet');
+  if(!el) return;
+  if(!Object.keys(masaMap).length){ el.innerHTML='<span style="color:var(--ink3);">Açık masa yok.</span>'; return; }
+  el.innerHTML = Object.entries(masaMap).map(([k,m])=>`
+    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
+      <span style="font-weight:600;color:var(--ink);">${k.startsWith('S')?'Salon':'Bahçe'} ${k.slice(1)}</span>
+      <span style="color:var(--gold);font-weight:700;">${fmtTL(m.toplam)}</span>
+    </div>`).join('');
+}
+
+async function tasiSelectDoldur(){
+  const kaynak = document.getElementById('tasi-kaynak');
+  const hedef  = document.getElementById('tasi-hedef');
+  if(!kaynak||!hedef) return;
+  const opts = Object.keys(masaMap).map(k=>`<option value="${k}">${k.startsWith('S')?'Salon':'Bahçe'} ${k.slice(1)} — ${fmtTL(masaMap[k].toplam)}</option>`).join('');
+  const bosMasa = [];
+  for(const p of['B','S']) for(let i=1;i<=40;i++) if(!masaMap[p+i]) bosMasa.push(p+i);
+  const bosOpts = bosMasa.slice(0,20).map(k=>`<option value="${k}">${k.startsWith('S')?'Salon':'Bahçe'} ${k.slice(1)} (Boş)</option>`).join('');
+  kaynak.innerHTML = '<option value="">Kaynak Seç…</option>'+opts;
+  hedef.innerHTML  = '<option value="">Hedef Seç…</option>'+opts+bosOpts;
+}
+
+async function masaTasiYap(){
+  const kaynak = document.getElementById('tasi-kaynak')?.value;
+  const hedef  = document.getElementById('tasi-hedef')?.value;
+  if(!kaynak||!hedef){ toast('Kaynak ve hedef seçin'); return; }
+  if(kaynak===hedef){ toast('Aynı masa seçilemez'); return; }
+  if(!confirm(`${kaynak} → ${hedef} taşınsın mı?`)) return;
+  const {data} = await sb.from('orders').update({table_number:hedef})
+    .eq('table_number',kaynak).in('status',['yeni','hazirlaniyor','hazir']).select('id');
+  toast(`✓ ${data?.length||0} sipariş taşındı`);
+  await kasaYenile();
+  tasiSelectDoldur();
+}
+
+/* ═══════════════════════════════════════════
+   REZERVASYON
+═══════════════════════════════════════════ */
+async function _rezGetir(){
+  const {data} = await sb.from('settings').select('value').eq('key','rezervasyonlar').single().catch(()=>({data:null}));
+  try{ return data?.value ? JSON.parse(data.value) : []; }catch(e){ return []; }
+}
+async function _rezKaydet(list){
+  await sb.from('settings').upsert([{key:'rezervasyonlar', value:JSON.stringify(list)}]);
+}
+async function rezListeYukle(){
+  rezList = await _rezGetir();
+  const el = document.getElementById('rez-liste');
+  if(!el) return;
+  if(!rezList.length){ el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:6px 0;">Rezervasyon yok.</div>'; return; }
+  el.innerHTML = rezList.map(r=>`<div class="rez-item">
+    <span class="rez-time">${r.saat}</span>
+    <span class="rez-table">${r.masa}</span>
+    <span class="rez-name">${esc(r.ad)} · ${r.kisi} kişi</span>
+    <button class="rez-del" onclick="rezSil('${r.id}')">✕</button>
+  </div>`).join('');
+}
+async function rezEkle(){
+  const masaNo  = document.getElementById('rez-masa')?.value;
+  const bolum   = document.getElementById('rez-bolum')?.value||'B';
+  const ad      = document.getElementById('rez-ad')?.value?.trim();
+  const saat    = document.getElementById('rez-saat')?.value;
+  const kisi    = document.getElementById('rez-kisi')?.value||'?';
+  if(!masaNo||!ad||!saat){ toast('Masa, ad ve saat zorunlu'); return; }
+  const masaKey = bolum+masaNo;
+  const liste   = await _rezGetir();
+  if(liste.some(r=>r.masa===masaKey)){ toast('Bu masa zaten rezerve'); return; }
+  liste.push({id:Date.now().toString(), masa:masaKey, ad, saat, kisi});
+  await _rezKaydet(liste);
+  document.getElementById('rez-masa').value='';
+  document.getElementById('rez-ad').value='';
+  document.getElementById('rez-saat').value='';
+  toast('✓ Rezervasyon eklendi');
+  await rezListeYukle();
+  masaGridYukle();
+}
+async function rezSil(id){
+  const liste = (await _rezGetir()).filter(r=>r.id!==id);
+  await _rezKaydet(liste);
+  await rezListeYukle();
+  masaGridYukle();
+}
+function rezMasaDoldur(key){
+  const bolum = key.startsWith('S') ? 'S' : 'B';
+  const no    = key.slice(1);
+  const rezMasaEl = document.getElementById('rez-masa');
+  const rezBolumEl = document.getElementById('rez-bolum');
+  if(rezMasaEl) rezMasaEl.value = no;
+  if(rezBolumEl) rezBolumEl.value = bolum;
+  kasaTabAc('islemler', document.querySelector('.kasa-nav-btn[onclick*="islemler"]'));
+  toast('Rezervasyon için masa dolduruldu');
+}
+
+/* ═══════════════════════════════════════════
+   VARDİYA NOTU
+═══════════════════════════════════════════ */
+async function vardiyaNotYukle(){
+  const {data} = await sb.from('settings').select('value').eq('key','vardiya_not').single().catch(()=>({data:null}));
+  const el = document.getElementById('vardiya-goster');
+  if(data?.value && el){
+    try{ const obj=JSON.parse(data.value); el.textContent=`Son not: ${obj.tarih} — ${obj.not?.slice(0,60)}`; }catch(e){}
+  }
+}
+async function vardiyaKaydet(){
+  const not = document.getElementById('vardiya-not')?.value;
+  if(!not){ toast('Not girin'); return; }
+  await sb.from('settings').upsert([{key:'vardiya_not', value:JSON.stringify({not, tarih:new Date().toLocaleString('tr-TR')})}]);
+  toast('✓ Vardiya notu kaydedildi');
+  await vardiyaNotYukle();
+}
+
+/* ═══════════════════════════════════════════
+   KAPANIŞ
+═══════════════════════════════════════════ */
+async function kapanisHazirla(){
+  const el = document.getElementById('kapanis-ozet');
+  if(!el) return;
+  const {data} = await sb.from('orders').select('total_price,odeme_yontemi,indirim_tutar').eq('status','teslim').gte('created_at',today());
+  const ciro   = (data||[]).reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+  const nakit  = (data||[]).filter(o=>o.odeme_yontemi==='nakit').reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+  const kart   = (data||[]).filter(o=>o.odeme_yontemi==='kart').reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+  const indirim= (data||[]).reduce((s,o)=>s+parseFloat(o.indirim_tutar||0),0);
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${[['Toplam Ciro',fmtTL(ciro),'var(--gold)'],['Nakit',fmtTL(nakit),''],['Kart',fmtTL(kart),''],['Toplam İndirim',fmtTL(indirim),'var(--green)']].map(([l,v,c])=>`
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:800;${c?'color:'+c+';':'color:var(--ink);'}">${v}</div>
+        <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.08em;margin-top:3px;">${l}</div>
+      </div>`).join('')}
+    </div>`;
+  const nakit2 = document.getElementById('nakit-sayim');
+  if(nakit2) nakit2.dataset.nakit = nakit;
+}
+function kasaNakitHesapla(){
+  const nakit    = parseFloat(document.getElementById('nakit-sayim')?.dataset?.nakit||0);
+  const sayilan  = parseFloat(document.getElementById('nakit-sayim')?.value||0);
+  const fark     = sayilan - nakit;
+  const el = document.getElementById('nakit-fark');
+  if(el) el.innerHTML = `Beklenen: ${fmtTL(nakit)} · Sayılan: ${fmtTL(sayilan)} · <b style="color:${fark>=0?'var(--green)':'var(--red)'};">Fark: ${fark>=0?'+':''}${fmtTL(fark)}</b>`;
+}
+async function kasaKapat(){
+  if(!confirm('Günü kapatmak istediğinize emin misiniz? Z Raporu yazıcıya gönderilecek.')) return;
+  await zRaporuYazdir();
+  toast('✓ Gün kapatıldı');
+}
+
+/* ═══════════════════════════════════════════
+   KASA REALTIME
+═══════════════════════════════════════════ */
+function kasaRealtimeBaglan(){
+  if(kasaKanal) try{sb.removeChannel(kasaKanal);}catch(e){}
+  kasaKanal = sb.channel('kasa-ch')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'orders'},()=>kasaYenile())
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders'},()=>kasaYenile())
+    .subscribe(s=>{
+      const dot = document.getElementById('kasa-dot');
+      if(dot){ dot.classList.toggle('active',s==='SUBSCRIBED'); dot.classList.toggle('off',s!=='SUBSCRIBED'); }
+      if(s==='CHANNEL_ERROR'||s==='CLOSED') setTimeout(kasaRealtimeBaglan,5000);
+    });
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN
+═══════════════════════════════════════════ */
+function adminAc(){
+  document.getElementById('admin-overlay').classList.add('open');
+  adminTab('menu', document.querySelector('.admin-tab-btn'));
+}
+function adminKapat(){ document.getElementById('admin-overlay').classList.remove('open'); }
+function adminTab(tab,btn){
+  document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('admin-'+tab)?.classList.add('active');
+  btn?.classList.add('active');
+  if(tab==='menu') adminMenuYukle();
+  if(tab==='kategori') adminKatYukle();
+}
+async function adminMenuYukle(){
+  const el = document.getElementById('admin-menu');
+  if(!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  const {data:kats} = await sb.from('categories').select('id,name_tr').order('sort_order');
+  const {data:urunler} = await sb.from('products').select('id,name_tr,price,category_id,active,image_url').order('sort_order');
+  let html = '';
+  for(const k of (kats||[])){
+    const urunlerK = (urunler||[]).filter(u=>u.category_id===k.id);
+    html += `<div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--ink2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">${esc(k.name_tr)}</div>
+      ${urunlerK.map(u=>`<div class="admin-product-row">
+        <img class="admin-product-img" src="${u.image_url||''}" onerror="this.style.background='var(--border)'">
+        <div class="admin-product-info">
+          <div class="admin-product-name">${esc(u.name_tr)}</div>
+          <div class="admin-product-price">${fmtTL(u.price)}</div>
+        </div>
+        <div class="admin-product-actions">
+          <button class="btn btn-outline btn-sm" onclick="urunDuzenle('${u.id}','${esc(u.name_tr)}',${u.price})">Düzenle</button>
+          <button class="btn btn-outline btn-sm" style="color:${u.active?'var(--green)':'var(--red)'};" onclick="urunToggle('${u.id}',${!u.active})">${u.active?'Aktif':'Pasif'}</button>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }
+  el.innerHTML = html||'<div style="color:var(--ink3);text-align:center;padding:20px;">Ürün bulunamadı.</div>';
+}
+async function adminKatYukle(){
+  const el = document.getElementById('admin-kategori');
+  if(!el) return;
+  const {data} = await sb.from('categories').select('id,name_tr,sort_order').order('sort_order');
+  el.innerHTML = (data||[]).map(k=>`<div class="admin-product-row">
+    <div class="admin-product-info"><div class="admin-product-name">${esc(k.name_tr)}</div></div>
+    <div class="admin-product-actions">
+      <button class="btn btn-outline btn-sm" onclick="katDuzenle('${k.id}','${esc(k.name_tr)}')">Düzenle</button>
+    </div>
+  </div>`).join('');
+}
+async function urunToggle(id, aktif){
+  await sb.from('products').update({active:aktif}).eq('id',id);
+  adminMenuYukle();
+}
+function urunDuzenle(id,name,price){
+  const yeniAd  = prompt('Ürün adı:', name);
+  if(!yeniAd) return;
+  const yeniFiyat= parseFloat(prompt('Fiyat (₺):', price));
+  if(isNaN(yeniFiyat)) return;
+  sb.from('products').update({name_tr:yeniAd, price:yeniFiyat}).eq('id',id).then(()=>{ toast('✓ Güncellendi'); adminMenuYukle(); });
+}
+function katDuzenle(id,name){
+  const yeni = prompt('Kategori adı:', name);
+  if(!yeni) return;
+  sb.from('categories').update({name_tr:yeni}).eq('id',id).then(()=>{ toast('✓ Güncellendi'); adminKatYukle(); });
+}
+async function sifreDegistir(){
+  const yeni = document.getElementById('yeni-sifre')?.value;
+  if(!yeni||yeni.length<4){ toast('En az 4 karakter'); return; }
+  await sb.from('settings').upsert([{key:'kasa_sifre', value:yeni}]);
+  kasaSifresi = yeni;
+  toast('✓ Şifre güncellendi');
+}
+</script>
+<script>
+/* ═══════════════════════════════════════════
+   GARSON EKRANI
+═══════════════════════════════════════════ */
+let garsonMasaMap = {};
+let garsonRezMap  = {};
+
+async function initGarson(){
+  document.getElementById('garson-screen').classList.add('open');
+  garsonFiltresi = 'aktif';
+  await loadOrders();
+  garsonRealtimeBaglan();
+  setInterval(loadOrders, 10000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) loadOrders(); });
+}
+
+async function loadOrders(){
+  if(garsonFiltresi==='masalar'){ await loadMasaTakibi(); return; }
+  const container = document.getElementById('orders-container');
+  if(!container) return;
+  const isGecmis = garsonFiltresi==='gecmis';
+  let q = sb.from('orders').select('id,table_number,total_price,status,created_at,note,order_items(id,product_name,quantity,unit_price)');
+  if(isGecmis){
+    q = q.eq('status','teslim').gte('created_at',today()).order('delivered_at',{ascending:false}).limit(40);
+  } else {
+    q = q.in('status',['yeni','hazirlaniyor']).order('created_at',{ascending:true});
+  }
+  const {data,error} = await q;
+  if(error){ container.innerHTML='<div style="color:var(--red);padding:20px;">Bağlantı hatası.</div>'; return; }
+
+  const count = document.getElementById('garson-count');
+  if(count) count.textContent = (data?.length||0) + (isGecmis?' teslim':' aktif');
+
+  if(!data?.length){
+    container.innerHTML='<div style="grid-column:1/-1;padding:60px;text-align:center;color:var(--ink3);">' + (isGecmis?'Bugün teslim edilmiş sipariş yok.':'Bekleyen sipariş yok. 🎉') + '</div>';
+    return;
+  }
+
+  const NEXT = {yeni:'hazirlaniyor', hazirlaniyor:'hazir'};
+  const NEXT_LABEL = {yeni:'Hazırlanıyor', hazirlaniyor:'Hazır ✓'};
+
+  container.innerHTML = data.map(o=>{
+    const st = o.status;
+    const bolumAdi = o.table_number?.startsWith('S') ? 'Salon' : 'Bahçe';
+    const masaNo   = o.table_number?.slice(1)||o.table_number;
+    const sure     = Math.floor((Date.now()-new Date(o.created_at).getTime())/60000);
+    const nextSt   = NEXT[st];
+    const itemsHtml= (o.order_items||[]).map(it=>`<div class="order-card-item">
+      <span class="order-card-item-qty">${it.quantity}×</span>
+      <span>${esc(it.product_name)}</span>
+    </div>`).join('');
+
+    return `<div class="order-card ${st}">
+      <div class="order-card-head">
+        <span class="order-card-masa">${bolumAdi} ${masaNo}</span>
+        <span class="order-card-time">${sure<60?sure+'dk':Math.floor(sure/60)+'sa'} önce</span>
+      </div>
+      <div class="order-card-items">${itemsHtml}${o.note?`<div style="padding:4px 0;font-size:11px;color:var(--ink3);">📝 ${esc(o.note)}</div>`:''}</div>
+      <div class="order-card-foot">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="order-card-total">${fmtTL(o.total_price)}</span>
+          <button class="fis-btn" onclick="garsonFisTekrar('${o.id}')" title="Fişi tekrar bas">🖨</button>
+        </div>
+        <div class="order-card-actions">
+          ${!isGecmis && nextSt ? `<button class="order-action-btn next" onclick="garsonStatus('${o.id}','${nextSt}',this)">${NEXT_LABEL[st]}</button>` : ''}
+          ${st==='hazir' ? `<span class="badge badge-green" style="font-size:11px;padding:5px 10px;">✓ Hazır — Kasa'dan öde</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if(garsonSecMasa) garsonMasaPanelGuncelle(garsonSecMasa);
+}
+
+async function garsonStatus(id, newStatus, btn){
+  if(newStatus==='teslim'){ toast('Hesap kapatmak için Kasa kullanın'); return; }
+  btn.disabled=true; btn.textContent='…';
+  const {error} = await sb.from('orders').update({status:newStatus}).eq('id',id);
+  if(error){ btn.disabled=false; btn.textContent='Hata'; return; }
+  await loadOrders();
+}
+
+async function garsonFisTekrar(id){
+  await sb.from('orders').update({printed_at:null}).eq('id',id);
+  toast('🖨 Fiş tekrar gönderildi');
+}
+
+/* ═══════════════════════════════════════════
+   GARSON MASA TAKİBİ
+═══════════════════════════════════════════ */
+async function loadMasaTakibi(){
+  const main = document.getElementById('garson-main');
+  if(!main) return;
+  const {data:orders} = await sb.from('orders')
+    .select('id,table_number,total_price,status,created_at')
+    .in('status',['yeni','hazirlaniyor','hazir']).gte('created_at',today());
+  garsonMasaMap = {};
+  for(const o of (orders||[])){
+    const t = o.table_number;
+    if(!garsonMasaMap[t]) garsonMasaMap[t]={orders:[],toplam:0,bekleyen:0};
+    garsonMasaMap[t].orders.push(o);
+    garsonMasaMap[t].toplam += parseFloat(o.total_price||0);
+    if(o.status==='yeni') garsonMasaMap[t].bekleyen++;
+  }
+  const rez = await _rezGetir();
+  garsonRezMap = {};
+  for(const r of rez) garsonRezMap[r.masa]=r;
+
+  let html = '';
+  for(const bolum of [{p:'B',label:'🌿 Bahçe',n:40},{p:'S',label:'🏠 Salon',n:40}]){
+    html += `<div class="bolum-header">${bolum.label}</div>
+    <div class="masa-grid-garson">`;
+    for(let i=1;i<=bolum.n;i++){
+      const key = bolum.p+i;
+      const m   = garsonMasaMap[key];
+      const rez = garsonRezMap[key];
+      const sel = garsonSecMasa===key;
+      let cls = 'masa-card-g';
+      if(sel) cls += ' selected-g';
+      else if(m) cls += ' occupied';
+      else if(rez && !m) cls += ' reserved';
+      const statusBadge = m ? `<div class="masa-card-g-status">${m.bekleyen>0?'🔴':'🟡'} ${fmtTL(m.toplam)}</div>` :
+                          (rez?`<div class="masa-card-g-status" style="color:#3B82F6;">REZ</div>`:
+                          `<div class="masa-card-g-status" style="color:var(--ink3);">Boş</div>`);
+      html += `<div class="${cls}" onclick="garsonMasaSec('${key}')">
+        <div class="masa-card-g-no">${i}</div>${statusBadge}
+      </div>`;
+    }
+    html += '</div>';
+  }
+  main.innerHTML = html;
+  if(garsonSecMasa) garsonMasaPanelGuncelle(garsonSecMasa);
+}
+
+function garsonMasaSec(key){
+  garsonSecMasa = key;
+  const panel = document.getElementById('garson-masa-panel');
+  if(panel) panel.style.display = 'block';
+  const urunBtn = document.getElementById('garson-urun-btn');
+  if(urunBtn) urunBtn.setAttribute('onclick',`garsonUrunEkleAc('${key}')`);
+  const tasiBtn = document.getElementById('garson-tasi-btn');
+  if(tasiBtn) tasiBtn.setAttribute('onclick',`garsonTasiBasla('${key}')`);
+  garsonMasaPanelGuncelle(key);
+  if(garsonFiltresi==='masalar') loadMasaTakibi();
+}
+
+async function garsonMasaPanelGuncelle(key){
+  const el = document.getElementById('garson-siparis-ozet');
+  if(!el) return;
+  const m = garsonMasaMap[key];
+  const rez = garsonRezMap[key];
+  const bolumAdi = key.startsWith('S') ? 'Salon' : 'Bahçe';
+
+  if(!m && rez){
+    el.innerHTML = `<h4>${bolumAdi} ${key.slice(1)} — Rezerve</h4>
+      <div style="font-size:12px;color:var(--ink2);margin-top:4px;">
+        <div>👤 ${esc(rez.ad)}</div><div>🕐 ${rez.saat}</div><div>👥 ${rez.kisi} kişi</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn btn-gold btn-sm" onclick="garsonUrunEkleAc('${key}')">➕ Servis Aç</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red);" onclick="garsonRezIptal('${key}')">İptal</button>
+      </div>`;
+    return;
+  }
+
+  if(!m){
+    el.innerHTML = `<h4>${bolumAdi} ${key.slice(1)} — Boş</h4>`;
+    return;
+  }
+
+  // Tüm itemları al
+  const {data:items} = await sb.from('order_items')
+    .select('product_name,quantity').in('order_id',m.orders.map(o=>o.id));
+  const itemMap = {};
+  for(const it of (items||[])){ itemMap[it.product_name]=(itemMap[it.product_name]||0)+it.quantity; }
+
+  el.innerHTML = `<h4>${bolumAdi} ${key.slice(1)} · ${fmtTL(m.toplam)}</h4>
+    <div class="garson-sidebar-panel" style="margin-top:6px;padding:6px;">
+      ${Object.entries(itemMap).map(([n,q])=>`<div class="siparis-satir"><span>${esc(n)}</span><span class="siparis-qty">${q}×</span></div>`).join('')}
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════
+   GARSON ÜRÜN EKLE
+═══════════════════════════════════════════ */
+function garsonUrunEkleAc(masaKey){
+  gueAktifMasa = masaKey || garsonSecMasa;
+  if(!gueAktifMasa){ toast('Önce masa seçin'); return; }
+  gueAktifKat = null;
+  urunEkleAc(gueAktifMasa);
+}
+
+/* ═══════════════════════════════════════════
+   GARSON MASA TAŞI
+═══════════════════════════════════════════ */
+function garsonTasiBasla(key){
+  const hedef = prompt(`Masa ${key}'ı hangi masaya taşı? (örn: B5 veya S3)`);
+  if(!hedef) return;
+  const h = hedef.toUpperCase();
+  if(!confirm(`${key} → ${h} taşınsın mı?`)) return;
+  sb.from('orders').update({table_number:h}).eq('table_number',key).in('status',['yeni','hazirlaniyor','hazir'])
+    .then(()=>{ toast(`✓ ${key} → ${h} taşındı`); loadOrders(); });
+}
+
+/* ═══════════════════════════════════════════
+   GARSON REZ İPTAL
+═══════════════════════════════════════════ */
+async function garsonRezIptal(key){
+  if(!confirm(`${key} rezervasyonu iptal edilsin mi?`)) return;
+  const liste = (await _rezGetir()).filter(r=>r.masa!==key);
+  await _rezKaydet(liste);
+  toast('✓ Rezervasyon iptal edildi');
+  loadMasaTakibi();
+}
+
+/* ═══════════════════════════════════════════
+   GARSON FİLTRE & REALTIME
+═══════════════════════════════════════════ */
+function garsonFiltre(filtre, btn){
+  garsonFiltresi = filtre;
+  garsonSecMasa  = null;
+  document.getElementById('garson-masa-panel').style.display='none';
+  document.querySelectorAll('.garson-filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadOrders();
+}
+
+function garsonRealtimeBaglan(){
+  if(garsonKanal) try{sb.removeChannel(garsonKanal);}catch(e){}
+  garsonKanal = sb.channel('garson-ch')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'orders'},p=>{
+      loadOrders();
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders'},p=>{
+      loadOrders();
+      if(garsonFiltresi==='masalar') loadMasaTakibi();
+    })
+    .subscribe(s=>{
+      const dot = document.getElementById('garson-dot');
+      if(dot){ dot.classList.toggle('active',s==='SUBSCRIBED'); dot.classList.toggle('off',s!=='SUBSCRIBED'); }
+      if(s==='CHANNEL_ERROR'||s==='CLOSED') setTimeout(garsonRealtimeBaglan,5000);
+    });
+}
+
+/* ═══════════════════════════════════════════
+   QR MÜŞTERİ MENÜsü
+═══════════════════════════════════════════ */
+async function initMenu(){
+  const {data:kats} = await sb.from('categories').select('id,name_tr,image_url').eq('active',true).order('sort_order');
+  menuKatData = kats||[];
+  if(!menuKatData.length) return;
+  menuAktifKat = menuKatData[0].id;
+
+  const catsEl = document.getElementById('menu-cats');
+  catsEl.innerHTML = menuKatData.map(k=>`<button class="menu-cat-btn ${menuAktifKat===k.id?'active':''}" onclick="menuKatSec('${k.id}',this)">
+    ${k.image_url?`<img class="menu-cat-img" src="${k.image_url}" loading="lazy" onerror="this.style.display='none'">`:''}
+    ${esc(k.name_tr)}</button>`).join('');
+
+  await menuUrunYukle(menuAktifKat);
+}
+
+async function menuKatSec(katId, btn){
+  menuAktifKat = katId;
+  document.querySelectorAll('.menu-cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  await menuUrunYukle(katId);
+}
+
+async function menuUrunYukle(katId){
+  const el = document.getElementById('menu-products');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  if(!menuUrunData[katId]){
+    const {data} = await sb.from('products').select('id,name_tr,price,image_url').eq('category_id',katId).eq('active',true).order('sort_order');
+    menuUrunData[katId] = data||[];
+  }
+  const urunler = menuUrunData[katId];
+  el.innerHTML = urunler.map(u=>`<div class="menu-product" onclick="sepetEkle('${u.id}','${esc(u.name_tr)}',${u.price})">
+    ${u.image_url?`<img class="menu-product-img" src="${u.image_url}" loading="lazy" onerror="this.src=''">`:`<div class="menu-product-img" style="background:var(--bg);"></div>`}
+    <div class="menu-product-body">
+      <div class="menu-product-name">${esc(u.name_tr)}</div>
+      <div class="menu-product-price">${fmtTL(u.price)}</div>
+    </div>
+  </div>`).join('');
+}
+
+function sepetEkle(id, name, price){
+  menuSepet[id] = menuSepet[id] || {name,price,qty:0};
+  menuSepet[id].qty++;
+  sepetGuncelle();
+  const items = Object.values(menuSepet);
+  const toplam = items.reduce((s,i)=>s+i.qty*i.price,0);
+  toast(`➕ ${name} eklendi`);
+}
+function sepetGuncelle(){
+  const items  = Object.values(menuSepet).filter(i=>i.qty>0);
+  const count  = items.reduce((s,i)=>s+i.qty,0);
+  const toplam = items.reduce((s,i)=>s+i.qty*i.price,0);
+  const btn    = document.getElementById('menu-cart-btn');
+  const cnt    = document.getElementById('cart-count');
+  const tot    = document.getElementById('cart-total');
+  if(btn){ btn.classList.toggle('show', count>0); }
+  if(cnt) cnt.textContent = count;
+  if(tot) tot.textContent = fmtTL(toplam);
+}
+
+function sepetAc(){
+  const items  = Object.entries(menuSepet).filter(([,i])=>i.qty>0);
+  const toplam = items.reduce((s,[,i])=>s+i.qty*i.price,0);
+  const modal  = document.getElementById('sepet-modal-inner');
+  modal.innerHTML = `
+    <div class="modal-head"><h3>🛒 Siparişim</h3><button onclick="sepetKapat()" style="font-size:20px;color:var(--ink2);">×</button></div>
+    <div class="modal-body">
+      ${items.map(([id,i])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:13px;font-weight:600;">${esc(i.name)}</div>
+          <div style="font-size:12px;color:var(--gold);">${fmtTL(i.price)} × ${i.qty}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button onclick="sepetCikar('${id}')" style="width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--bg);">−</button>
+          <span style="font-weight:700;min-width:16px;text-align:center;">${i.qty}</span>
+          <button onclick="sepetEkle('${id}','${esc(i.name)}',${i.price})" style="width:26px;height:26px;border-radius:6px;border:none;background:var(--gold);color:#fff;">+</button>
+        </div>
+      </div>`).join('')}
+      <div class="field" style="margin-top:12px;">
+        <label>Özel not (isteğe bağlı)</label>
+        <input type="text" id="sepet-not" placeholder="Örn: şekersiz, az buz…">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="sepetKapat()">Devam Et</button>
+      <button class="btn btn-gold" onclick="siparisVer()" style="flex:1;">✓ Sipariş Ver — ${fmtTL(toplam)}</button>
+    </div>`;
+  document.getElementById('sepet-modal').classList.remove('hidden');
+}
+function sepetKapat(){ document.getElementById('sepet-modal').classList.add('hidden'); }
+function sepetCikar(id){
+  if(menuSepet[id]){ menuSepet[id].qty--; if(menuSepet[id].qty<=0) delete menuSepet[id]; }
+  sepetGuncelle();
+  const remaining = Object.values(menuSepet).filter(i=>i.qty>0);
+  if(!remaining.length){ sepetKapat(); return; }
+  sepetAc();
+}
+
+async function siparisVer(){
+  const items  = Object.entries(menuSepet).filter(([,i])=>i.qty>0);
+  if(!items.length){ toast('Sepet boş'); return; }
+  const not    = document.getElementById('sepet-not')?.value||null;
+  const toplam = items.reduce((s,[,i])=>s+i.qty*i.price,0);
+  const btn    = document.querySelector('#sepet-modal-inner .btn-gold');
+  if(btn){ btn.disabled=true; btn.textContent='Gönderiliyor…'; }
+  const {data:order,error} = await sb.from('orders').insert({
+    table_number:menuMasa, status:'yeni', total_price:toplam.toFixed(2), note:not
+  }).select('id').single();
+  if(error||!order){ toast('Hata: '+error?.message); if(btn){btn.disabled=false;} return; }
+  await sb.from('order_items').insert(items.map(([,i])=>({
+    order_id:order.id, product_name:i.name, quantity:i.qty, unit_price:i.price
+  })));
+  menuSepet = {};
+  sepetGuncelle();
+  sepetKapat();
+  toast('✓ Siparişiniz alındı! Teşekkürler.');
+}
+</script>
+</body></html>
