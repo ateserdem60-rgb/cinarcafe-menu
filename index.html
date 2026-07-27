@@ -693,7 +693,8 @@ body.menu-acik{ background:#F7F8FA !important; }
   padding:16px 18px 15px;
   display:flex;align-items:center;justify-content:space-between;
   box-shadow:0 1px 3px rgba(0,0,0,0.04);
-  position:relative;z-index:60;
+  position:relative;
+  z-index:200;
 }
 /* Kategorilere dön butonu — sadece ürün görünümünde görünür */
 .menu-geri-btn{
@@ -750,7 +751,7 @@ body.menu-acik{ background:#F7F8FA !important; }
 .menu-lang-trigger:active{ background:#EEF0F3; transform:scale(0.96); }
 .menu-lang-trigger .ok{ font-size:9px; opacity:.6; }
 .menu-lang-menu{
-  position:absolute; top:calc(100% + 8px); right:0; z-index:120;
+  position:absolute; top:calc(100% + 8px); right:0; z-index:250;
   background:#FFFFFF;
   border:1px solid #ECEEF1;
   border-radius:16px; padding:7px; min-width:158px;
@@ -772,7 +773,7 @@ body.menu-acik{ background:#F7F8FA !important; }
 .menu-lang-sec.aktif .menu-lang-tik{ color:#B45309; }
 .menu-lang-tik{ color:transparent; font-size:13px; }
 .menu-lang-overlay{
-  position:fixed; inset:0; z-index:40; display:none;
+  position:fixed; inset:0; z-index:190; display:none;
 }
 .menu-lang-overlay.acik{ display:block; }
 
@@ -871,6 +872,7 @@ body.menu-acik{ background:#F7F8FA !important; }
   border-bottom:1px solid #ECEEF1;
   background:#FFFFFF;
   padding:0 10px;
+  position:relative;z-index:1;
 }
 .menu-kat-bar::-webkit-scrollbar{display:none;}
 .menu-kat-btn{
@@ -896,6 +898,7 @@ body.menu-acik{ background:#F7F8FA !important; }
   gap:14px;
   align-content:start;align-items:start;justify-items:stretch;
   background:transparent;
+  position:relative;z-index:1;
 }
 
 /* Ürün kartı — lüks: derin gölge, altın kenar, üstte parıltı */
@@ -7620,35 +7623,50 @@ function bildirimSesiCal(tip){
     var ctx = _sesCtx;
     if(ctx.state === 'suspended'){ ctx.resume(); }
 
-    var ANA_SES = 0.85;   // yüksek (gürültü için)
+    var ANA_SES = 1.0;    // dolu ses (cafe gürültüsü için yüksek)
 
-    // hesap = sıcak inen üçlü, garson/sipariş = davetkâr çıkan üçlü
-    var notalar = (tip === 'hesap')
-      ? [784.0, 587.3, 440.0]
-      : [523.3, 659.3, 784.0];
+    // Daha BASLI notalar (bir oktav aşağı) — gürültüde delip geçer
+    // hesap = sıcak inen, garson = davetkâr çıkan, siparis = net iki nota "dank-dank"
+    var notalar;
+    if(tip === 'hesap')      notalar = [392.0, 293.7, 220.0];   // Sol-Re-La (inen, alçak-sıcak)
+    else if(tip === 'siparis') notalar = [349.2, 523.3];         // Fa-Do (net ikili, "yeni sipariş!")
+    else                      notalar = [261.6, 329.6, 392.0];   // Do-Mi-Sol (çıkan, enerjik — garson)
 
+    // Tek bir "zil" — bas katman + gövde + parlaklık = dolgun kapı zili hissi
     function zil(baslangic, taban, ses){
+      // 1) BAS katman (alt oktav sine) — asıl "dank" gürültüde duyulur
+      var ob = ctx.createOscillator(), gb = ctx.createGain();
+      ob.type = 'sine'; ob.frequency.value = taban / 2;
+      ob.connect(gb); gb.connect(ctx.destination);
+      gb.gain.setValueAtTime(0.0001, baslangic);
+      gb.gain.exponentialRampToValueAtTime(ses * 0.9, baslangic + 0.015);
+      gb.gain.exponentialRampToValueAtTime(0.0001, baslangic + 1.1);
+      ob.start(baslangic); ob.stop(baslangic + 1.15);
+
+      // 2) GÖVDE (ana ton — triangle, sıcak ve dolgun)
       var o1 = ctx.createOscillator(), g1 = ctx.createGain();
       o1.type = 'triangle'; o1.frequency.value = taban;
-      var o2 = ctx.createOscillator(), g2 = ctx.createGain();
-      o2.type = 'sine'; o2.frequency.value = taban * 2;
-      o1.connect(g1); o2.connect(g2);
-      g1.connect(ctx.destination); g2.connect(ctx.destination);
-      // yumuşak giriş + uzun sönüm = çan gibi, keskin değil
+      o1.connect(g1); g1.connect(ctx.destination);
       g1.gain.setValueAtTime(0.0001, baslangic);
       g1.gain.exponentialRampToValueAtTime(ses, baslangic + 0.02);
-      g1.gain.exponentialRampToValueAtTime(0.0001, baslangic + 0.9);
+      g1.gain.exponentialRampToValueAtTime(0.0001, baslangic + 0.95);
+      o1.start(baslangic); o1.stop(baslangic + 1.0);
+
+      // 3) PARLAKLIK (üst harmonik — çan tınısı, ama kısık)
+      var o2 = ctx.createOscillator(), g2 = ctx.createGain();
+      o2.type = 'sine'; o2.frequency.value = taban * 2;
+      o2.connect(g2); g2.connect(ctx.destination);
       g2.gain.setValueAtTime(0.0001, baslangic);
-      g2.gain.exponentialRampToValueAtTime(ses * 0.28, baslangic + 0.02);
-      g2.gain.exponentialRampToValueAtTime(0.0001, baslangic + 0.6);
-      o1.start(baslangic); o1.stop(baslangic + 0.95);
-      o2.start(baslangic); o2.stop(baslangic + 0.65);
+      g2.gain.exponentialRampToValueAtTime(ses * 0.22, baslangic + 0.02);
+      g2.gain.exponentialRampToValueAtTime(0.0001, baslangic + 0.55);
+      o2.start(baslangic); o2.stop(baslangic + 0.6);
     }
 
+    // Arpej: notaları sırayla çal, sonra tamamını bir kez daha (çift çalış = fark edilir)
     var t0 = ctx.currentTime;
-    notalar.forEach(function(f, i){ zil(t0 + i * 0.16, f, ANA_SES); });
-    var t1 = t0 + 0.16 * notalar.length + 0.35;
-    notalar.forEach(function(f, i){ zil(t1 + i * 0.16, f, ANA_SES); });
+    notalar.forEach(function(f, i){ zil(t0 + i * 0.19, f, ANA_SES); });
+    var t1 = t0 + 0.19 * notalar.length + 0.30;
+    notalar.forEach(function(f, i){ zil(t1 + i * 0.19, f, ANA_SES); });
   }catch(e){}
 }
 
@@ -8809,6 +8827,17 @@ function menuLangToggle(){
   var ov   = document.getElementById('menu-lang-overlay');
   var acik = menu.classList.toggle('acik');
   if(ov) ov.classList.toggle('acik', acik);
+  if(acik){
+    // Trigger'ın konumuna göre menüyü viewport'a sabitle (stacking context sorununu tamamen aş)
+    var trig = document.getElementById('menu-lang-trigger');
+    if(trig){
+      var r = trig.getBoundingClientRect();
+      menu.style.position = 'fixed';
+      menu.style.top = (r.bottom + 8) + 'px';
+      menu.style.right = (window.innerWidth - r.right) + 'px';
+      menu.style.left = 'auto';
+    }
+  }
 }
 function menuLangKapat(){
   var menu = document.getElementById('menu-lang-menu');
